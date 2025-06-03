@@ -1,0 +1,71 @@
+/lib
+│
+├── main.dart
+│
+├── core/
+│   ├── error/
+│   │   └── exceptions.dart
+│   │   └── failures.dart
+│   ├── network/
+│   │   └── network_info.dart
+│   └── utils/
+│       └── constants.dart
+│
+├── features/
+│   └── chat/
+│       ├── data/
+│       │   ├── datasources/
+│       │   │   └── chat_remote_data_source.dart
+│       │   ├── models/
+│       │   │   └── message_model.dart
+│       │   └── repositories/
+│       │       └── chat_repository_impl.dart
+│       ├── domain/
+│       │   ├── entities/
+│       │   │   └── message.dart
+│       │   ├── repositories/
+│       │   │   └── chat_repository.dart
+│       │   └── usecases/
+│       │       └── send_message.dart
+│       │       └── get_messages.dart
+│       └── presentation/
+│           ├── bloc/
+│           │   └── chat_bloc.dart
+│           │   └── chat_event.dart
+│           │   └── chat_state.dart
+│           ├── pages/
+│           │   └── chat_page.dart
+│           └── widgets/
+│               └── message_bubble.dart
+│               └── chat_input.dart
+│
+├── features/
+│   └── auth/
+│       ├── data/
+│       │   ├── datasources/
+│       │   │   └── auth_remote_data_source.dart
+│       │   ├── models/
+│       │   │   └── user_model.dart
+│       │   └── repositories/
+│       │       └── auth_repository_impl.dart
+│       ├── domain/
+│       │   ├── entities/
+│       │   │   └── user.dart
+│       │   ├── repositories/
+│       │   │   └── auth_repository.dart
+│       │   └── usecases/
+│       │       └── login.dart
+│       │       └── register.dart
+│       └── presentation/
+│           ├── bloc/
+│           │   └── auth_bloc.dart
+│           │   └── auth_event.dart
+│           │   └── auth_state.dart
+│           ├── pages/
+│           │   └── login_page.dart
+│           │   └── register_page.dart
+│           └── widgets/
+│               └── login_form.dart
+│               └── register_form.dart
+│
+└── injection_container.dart
