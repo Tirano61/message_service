@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:message_service/ui/pages/home/home.dart';
+import 'package:message_service/features/auth/ui/pages/login_page.dart';
 
 void main() {
   runApp(const MyApp());
