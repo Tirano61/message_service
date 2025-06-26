@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:message_service/feactures/login/ui/pages/login/login.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
+import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
+import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
+import 'package:message_service/feactures/auth/ui/bloc/auth_bloc.dart';
+import 'package:message_service/feactures/auth/ui/pages/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,23 +15,35 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Message Service',
-      theme: ThemeData(
-
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 132, 0, 255)),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(255, 76, 0, 255),
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14.0),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(create: (_) {
+          return AuthBloc(
+            loginUseCase: LoginUseCase(
+              userRepository: UserRepositoryImpl(
+                remoteDataSource: UserLoginDataSourceImpl()
+              ),
+            )
+          );
+        }),
+      ],
+      child: MaterialApp(
+        title: 'Message Service',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 132, 0, 255)),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color.fromARGB(255, 76, 0, 255),
+              foregroundColor: Colors.white,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14.0),
+              ),
             ),
           ),
         ),
+        home: Login(),
       ),
-      home: const Login(),
     );
   }
 }

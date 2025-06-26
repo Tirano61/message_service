@@ -1,6 +1,6 @@
 
 
-import 'package:message_service/features/auth/domain/entities/user.dart';
+import 'package:message_service/feactures/auth/domain/entities/user.dart';
 
 abstract class UserRepository {
   Future<void> createUser(String userId, String name, String email);
