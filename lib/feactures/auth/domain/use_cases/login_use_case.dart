@@ -1,7 +1,7 @@
 
 
-import 'package:message_service/features/auth/domain/entities/user.dart';
-import 'package:message_service/features/auth/domain/repositories/user_repositoriy.dart';
+import 'package:message_service/feactures/auth/domain/entities/user.dart';
+import 'package:message_service/feactures/auth/domain/repositories/user_repositoriy.dart';
 
 class LoginUseCase {
   
