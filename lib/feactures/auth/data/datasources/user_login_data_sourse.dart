@@ -1,11 +1,13 @@
 
-
+import 'dart:convert';
+import 'package:message_service/feactures/auth/data/models/user_model.dart';
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
+import 'package:http/http.dart' as http;
 
 abstract class UserLoginDataSource {
   Future<void> createUser(String userId, String name, String email);
   Future<User> updateUser(String userId, {required name, required String email, required String token});
-  Future<User> login( String email, String password );
+  Future<UserModel> login( String email, String password );
   Future<bool> logOut( String user );
   Future<void> deleteUser(String userId);
 }
@@ -13,37 +15,42 @@ abstract class UserLoginDataSource {
 class UserLoginDataSourceImpl implements UserLoginDataSource {
   @override
   Future<void> createUser(String userId, String name, String email) {
-    // TODO: implement createUser
+    
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteUser(String userId) {
-    // TODO: implement deleteUser
+    
     throw UnimplementedError();
   }
 
   @override
   Future<bool> logOut(String user) {
-    // TODO: implement logOut
+    
     throw UnimplementedError();
   }
 
   @override
-  Future<User> login(String email, String password) {
-
+  Future<UserModel> login(String email, String password) async {
+    final url = Uri.parse('http://10.0.2.2:3000/auth/login');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
     
-    return Future.value(User(
-      id: '123',
-      fullName: 'Test User',
-      email: email,
-      token: 'test_token',
-    ));
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return UserModel.fromJson(data);
+    } else {
+      throw Exception('Failed to login: ${response.statusCode}');
+    }
   }
 
   @override
   Future<User> updateUser(String userId, {required name, required String email, required String token}) {
-    // TODO: implement updateUser
+   
     throw UnimplementedError();
   }
   

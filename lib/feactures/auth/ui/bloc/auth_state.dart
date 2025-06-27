@@ -6,7 +6,10 @@ sealed class AuthState {}
 final class AuthInitialState extends AuthState {}
 
 final class AuthLoadingState extends AuthState {}
-final class AuthAuthenticatedState extends AuthState {}
+final class AuthAuthenticatedState extends AuthState {
+  final User user;
+  AuthAuthenticatedState({required this.user});
+}
 final class AuthErrorState extends AuthState {
   final String message;
 
