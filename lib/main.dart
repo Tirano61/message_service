@@ -5,6 +5,7 @@ import 'package:message_service/feactures/auth/data/repositories/user_reository_
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
 import 'package:message_service/feactures/auth/ui/bloc/auth_bloc.dart';
 import 'package:message_service/feactures/auth/ui/pages/login_page.dart';
+import 'package:message_service/feactures/message/ui/pages/message/message_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -42,7 +43,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: Login(),
+        home: const MessagePage(),
       ),
     );
   }
