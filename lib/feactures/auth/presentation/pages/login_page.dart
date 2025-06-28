@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:message_service/feactures/auth/ui/bloc/auth_bloc.dart';
-import 'package:message_service/feactures/message/ui/pages/message/message_page.dart';
+import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
+import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 class Login extends StatelessWidget {
   Login({super.key});

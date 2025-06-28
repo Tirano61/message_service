@@ -3,9 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
-import 'package:message_service/feactures/auth/ui/bloc/auth_bloc.dart';
-import 'package:message_service/feactures/auth/ui/pages/login_page.dart';
-import 'package:message_service/feactures/message/ui/pages/message/message_page.dart';
+import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
+import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 void main() {
   runApp(const MyApp());
