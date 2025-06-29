@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
+import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
+import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
+import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 void main() {
@@ -26,6 +30,13 @@ class MyApp extends StatelessWidget {
             )
           );
         }),
+        BlocProvider<MessageBloc>(create: (_) {
+          return MessageBloc(
+            messageDataSource: MessageDataSourceImpl( 
+              socketService: SocketService(),
+            ),
+          );
+        }),
       ],
       child: MaterialApp(
         title: 'Message Service',
@@ -42,7 +53,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const MessagePage(),
+        home: Login(),
       ),
     );
   }

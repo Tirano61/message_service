@@ -9,7 +9,7 @@ class GetMessageUseCase {
 
   GetMessageUseCase({required this.messageRepository});
 
-  Future<List<MessageEntity>> getMessages() {
-    return messageRepository.getMessages();
+  Future<MessageEntity> getMessage() {
+    return messageRepository.getMessage();
   }
 }

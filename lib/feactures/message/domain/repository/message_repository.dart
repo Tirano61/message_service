@@ -2,7 +2,9 @@
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 
 abstract class MessageRepository {
-  Future<void> sendMessage(String message);
-  Future<List<MessageEntity>> getMessages();
+  sendMessage(MessageEntity message);
+  Future<MessageEntity> getMessage();
   Future<void> deleteMessage(String messageId);
+  connectToServer();
+  listenForMessages(Function(dynamic) onMessage);
 }
