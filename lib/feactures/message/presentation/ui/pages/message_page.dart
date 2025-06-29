@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MessagePage extends StatefulWidget {
   const MessagePage({super.key});
@@ -17,6 +19,18 @@ class _MessagePageState extends State<MessagePage> {
 
   final TextEditingController _controller = TextEditingController();
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  void initState() {  
+    super.initState();
+    context.read<MessageBloc>().add(ConnectServerEvent());
+    // Aquí podrías inicializar la conexión al servidor o cualquier otra configuración necesaria.
+  }
+
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
@@ -34,6 +48,19 @@ class _MessagePageState extends State<MessagePage> {
         centerTitle: true,
         elevation: 6,
         title: const Text('Messages'),
+        actions: [
+          BlocBuilder<MessageBloc, MessageState>(
+            builder: (context, state) {
+              Color iconColor;
+              if (state is ServerConnectedState) {
+                iconColor = Colors.green;
+              } else {
+                iconColor = Colors.red;
+              }
+              return Icon(Icons.connect_without_contact, color: iconColor);
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

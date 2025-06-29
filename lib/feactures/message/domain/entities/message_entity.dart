@@ -12,4 +12,13 @@ class MessageEntity {
     required this.senderId,
     required this.timestamp,
   });
+
+  factory MessageEntity.fromJson(Map<String, dynamic> json) {
+    return MessageEntity(
+      id: json['id'],
+      content: json['content'],
+      senderId: json['senderId'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
+  }
 }
