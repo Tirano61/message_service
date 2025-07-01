@@ -26,12 +26,12 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<User> login(String email, String password) {
+  Future<UserEntity> login(String email, String password) {
     return remoteDataSource.login(email, password);
   }
 
   @override
-  Future<User> updateUser(String userId, {required name, required String email, required String token}) {
+  Future<UserEntity> updateUser(String userId, {required name, required String email, required String token}) {
     return remoteDataSource.updateUser(userId, name: name, email: email, token: token);
   }
 
