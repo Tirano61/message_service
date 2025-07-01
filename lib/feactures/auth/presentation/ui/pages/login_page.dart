@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
+import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
+import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 class Login extends StatelessWidget {
@@ -17,8 +20,17 @@ class Login extends StatelessWidget {
         listener: (context, state) {
           if (state is AuthAuthenticatedState) {
             //state.user.saveUser();
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MessagePage()),
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlocProvider<MessageBloc>(
+                  create: (_) => MessageBloc(
+                    messageDataSource: MessageDataSourceImpl(socketService: SocketService()),
+                    userEntity: (state).user,
+                  ),
+                  child: MessagePage(),
+                ),
+              ),
             );
           }
         },

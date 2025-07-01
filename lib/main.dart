@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
+import 'package:message_service/feactures/auth/domain/entities/user.dart';
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
@@ -30,13 +31,12 @@ class MyApp extends StatelessWidget {
             )
           );
         }),
-        BlocProvider<MessageBloc>(create: (_) {
-          return MessageBloc(
-            messageDataSource: MessageDataSourceImpl( 
-              socketService: SocketService(),
-            ),
-          );
-        }),
+        BlocProvider<MessageBloc>(
+          create: (_) => MessageBloc(
+            messageDataSource: MessageDataSourceImpl(socketService: SocketService()),
+            userEntity: UserEntity(id: '', email: '', token: '', fullName: ''),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Message Service',

@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 
 abstract class UserLoginDataSource {
   Future<void> createUser(String userId, String name, String email);
-  Future<User> updateUser(String userId, {required name, required String email, required String token});
-  Future<UserModel> login( String email, String password );
+  Future<UserEntity> updateUser(String userId, {required name, required String email, required String token});
+  Future<UserEntity> login( String email, String password );
   Future<bool> logOut( String user );
   Future<void> deleteUser(String userId);
 }
@@ -32,7 +32,7 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
   }
 
   @override
-  Future<UserModel> login(String email, String password) async {
+  Future<UserEntity> login(String email, String password) async {
     final url = Uri.parse('http://10.0.2.2:3000/auth/login');
     final response = await http.post(
       url,
@@ -49,7 +49,7 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
   }
 
   @override
-  Future<User> updateUser(String userId, {required name, required String email, required String token}) {
+  Future<UserEntity> updateUser(String userId, {required name, required String email, required String token}) {
    
     throw UnimplementedError();
   }

@@ -10,7 +10,7 @@ final class MessageInitialState extends MessageState {}
 final class MessageLoadingState extends MessageState {}
 
 final class MessageLoadedState extends MessageState {
-  final List<Map<String, dynamic>> messages;
+  final String messages;
 
   MessageLoadedState(this.messages);
 }
