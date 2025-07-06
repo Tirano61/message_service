@@ -39,6 +39,7 @@ class SocketService {
   }
 
   void emit(String event, dynamic data) {
+    print("Emitting event: $event with data: $data");
     socket.emit(event, data);
   }
 }

@@ -40,7 +40,7 @@ class MessageDataSourceImpl implements MessageDataSource {
 
   @override
   Future<void> sendMessage(MessageEntity message)async {
-    return _socketService.emit('send_message', message);
+    return _socketService.emit('client-send-message', message.toJson());
   }
 
   @override
