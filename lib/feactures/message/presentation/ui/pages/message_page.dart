@@ -35,7 +35,9 @@ class _MessagePageState extends State<MessagePage> {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
       setState(() {
+        context.read<MessageBloc>().add(SendMessageEvent(text));
         messages.add({'text': text, 'isMe': true});
+
       });
       _controller.clear();
     }

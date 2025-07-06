@@ -21,4 +21,13 @@ class MessageEntity {
       timestamp: DateTime.parse(json['timestamp']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'content': content,
+      'senderId': senderId,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
 }

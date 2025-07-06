@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp( 
         title: 'Message Service',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 132, 0, 255)),
