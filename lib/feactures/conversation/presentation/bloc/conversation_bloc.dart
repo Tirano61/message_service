@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:meta/meta.dart';
 
 part 'conversation_event.dart';
