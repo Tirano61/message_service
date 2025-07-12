@@ -7,12 +7,15 @@ class SocketService {
 
   SocketService._internal();
 
-  void connect() {
+  void connect({required String token}) {
     socket = IO.io(
       "http://10.0.2.2:3000",
       IO.OptionBuilder()
           .setTransports(['websocket'])
-          .build(),
+          .setExtraHeaders({'authentication': token}) 
+          .build()
+          
+      
     );
     
     socket.connect();

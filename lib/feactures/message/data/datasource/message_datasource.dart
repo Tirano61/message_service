@@ -12,12 +12,10 @@ abstract class MessageDataSource {
   Future<MessageEntity> getMessage();
   Future<void> sendMessage(MessageEntity message);
   Future<void> deleteMessage(String messageId);
-  void connectToServer();
+  void connectToServer(String token);
   void listenForMessages(Function(dynamic) onMessage);
 
 }
-
-
 
 
 class MessageDataSourceImpl implements MessageDataSource {
@@ -50,8 +48,8 @@ class MessageDataSourceImpl implements MessageDataSource {
   }
   
   @override
-  void connectToServer() {
-    _socketService.connect();
+  void connectToServer(String token) {
+    _socketService.connect(token: token);
   }
   
   @override
