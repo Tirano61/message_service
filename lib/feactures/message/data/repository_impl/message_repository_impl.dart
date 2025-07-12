@@ -9,8 +9,8 @@ class MessageRepositoryImpl implements MessageRepository {
 
   MessageRepositoryImpl(this._messageDataSourceImpl);
 
-  void connectToServer() {
-    _messageDataSourceImpl.connectToServer();
+  void connectToServer(String token) {
+    _messageDataSourceImpl.connectToServer(token);
   }
 
   void listenForMessages(Function(dynamic) onMessage) {

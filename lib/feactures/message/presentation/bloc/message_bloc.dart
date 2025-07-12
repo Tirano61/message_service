@@ -16,7 +16,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<ConnectServerEvent>((event, emit) {
            
       try {
-        final connect =  messageDataSource.connectToServer();
+        final connect =  messageDataSource.connectToServer(userEntity.token);
         emit(ServerConnectedState());
        // Assuming empty list for initial state
       } catch (e) {
