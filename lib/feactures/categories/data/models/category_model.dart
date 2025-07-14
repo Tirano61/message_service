@@ -2,6 +2,8 @@
 
 import 'dart:convert';
 
+import 'package:message_service/feactures/categories/domain/entity/category_entity.dart';
+
 List<CategoryModel> categoryModelFromJson(String str) => List<CategoryModel>.from(json.decode(str).map((x) => CategoryModel.fromJson(x)));
 
 String categoryModelToJson(List<CategoryModel> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
@@ -40,6 +42,17 @@ class CategoryModel {
         "isActive": isActive,
         "type": type,
     };
+
+    CategoryEntity toEntity() {
+        return CategoryEntity(
+            id: id,
+            name: name,
+            components: components,
+            description: description,
+            isActive: isActive,
+            type: type,
+        );
+    } 
 }
 
 class Component {
