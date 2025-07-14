@@ -10,11 +10,11 @@ final class CategoryLoadingState extends CategoryState {}
 final class CategoryLoadedState extends CategoryState {
   final List<CategoryEntity> categoryEntity;
 
-  CategoryLoadedState(this.categoryEntity);
+  CategoryLoadedState({required this.categoryEntity});
 }
 
 final class CategoryErrorState extends CategoryState {
   final String message;
 
-  CategoryErrorState(this.message);
+  CategoryErrorState({required this.message});
 }
