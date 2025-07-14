@@ -6,8 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/categories/presentation/bloc/category_bloc.dart';
 
-class CategoryPage extends StatelessWidget {
+class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
+
+  @override
+  State<CategoryPage> createState() => _CategoryPageState();
+}
+
+class _CategoryPageState extends State<CategoryPage> {
+
+
+  @override
+  void initState() {
+    context.read<CategoryBloc>().add(CategoryLoadEvent());
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +39,7 @@ class CategoryPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 final category = state.categoryEntity[index];
                 return ListTile(
-                  title: Text(category.name),
+                  title: Text(category.name!),
                   onTap: () {
                     // Handle category tap
                   },
