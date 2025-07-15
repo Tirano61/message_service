@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/categories/presentation/bloc/category_bloc.dart';
+import 'package:message_service/feactures/categories/presentation/page/components_page.dart';
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -41,7 +42,9 @@ class _CategoryPageState extends State<CategoryPage> {
                 return ListTile(
                   title: Text(category.name!),
                   onTap: () {
-                    // Handle category tap
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) => ComponentPage(categoryEntity: category),
+                    ));
                   },
                 );
               },

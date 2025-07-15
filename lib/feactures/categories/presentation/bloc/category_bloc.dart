@@ -14,14 +14,21 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
   final UserEntity userEntity;
 
   CategoryBloc({required this.getCategoriesUseCase, required this.userEntity}) : super(CategoryInitial()) {
-    on<CategoryLoadEvent>((event, emit) {
+    on<CategoryLoadEvent>((event, emit)async {
       emit(CategoryLoadingState());
+      try {
 
-      getCategoriesUseCase(userEntity.token).then((categories) {
+        final categories = await getCategoriesUseCase(userEntity.token);
+
         emit(CategoryLoadedState(categoryEntity: categories));
-      }).catchError((error) {
+      } catch (error) {
         emit(CategoryErrorState(message: error.toString()));
-      });
+      }
+    });
+
+    on<CategoryComponentsEvent>((event, emit) async {
+      emit(CategoryComponentsLoadingState());
+      
     });
   }
 }

@@ -10,3 +10,9 @@ final class CategoryAddEvent extends CategoryEvent {
 
   CategoryAddEvent(this.name);
 }
+
+final class CategoryComponentsEvent extends CategoryEvent {
+  final CategoryEntity categoryEntity;
+
+  CategoryComponentsEvent(this.categoryEntity);
+}

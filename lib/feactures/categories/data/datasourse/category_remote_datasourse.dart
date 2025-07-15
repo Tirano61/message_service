@@ -14,21 +14,23 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
   @override
   Future<List<CategoryModel>> getAllCategories(String token) async {
     final uri = Uri.parse('http://10.0.2.2:3000/category'); // Corrige la URL
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    final response = await http.get(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => CategoryModel.fromJson(json)).toList();
-    } else {
-      throw Exception('Error al obtener las categorías');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => CategoryModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      print('Error al obtener las categorías: $e');
     }
+    return [];
   }
 
 }
