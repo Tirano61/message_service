@@ -18,3 +18,11 @@ final class CategoryErrorState extends CategoryState {
 
   CategoryErrorState({required this.message});
 }
+
+final class CategoryComponentsLoadingState extends CategoryState {}
+
+final class CategoryComponentsState extends CategoryState {
+  final CategoryEntity categoryEntity;
+
+  CategoryComponentsState({required this.categoryEntity});
+}
