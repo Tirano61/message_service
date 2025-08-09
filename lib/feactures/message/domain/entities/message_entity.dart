@@ -3,13 +3,13 @@
 class MessageEntity {
   final String id;
   final String content;
-  final String senderId;
+  final String sender;
   final DateTime timestamp;
 
   MessageEntity({
     required this.id,
     required this.content,
-    required this.senderId,
+    required this.sender,
     required this.timestamp,
   });
 
@@ -17,7 +17,7 @@ class MessageEntity {
     return MessageEntity(
       id: json['id'],
       content: json['content'],
-      senderId: json['senderId'],
+      sender: json['sender'],
       timestamp: DateTime.parse(json['timestamp']),
     );
   }
@@ -26,7 +26,7 @@ class MessageEntity {
     return {
       'id': id,
       'content': content,
-      'senderId': senderId,
+      'sender': sender,
       'timestamp': timestamp.toIso8601String(),
     };
   }

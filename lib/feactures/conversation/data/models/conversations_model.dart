@@ -46,7 +46,7 @@ class ConversationsModel {
     return ConversationEntity(
       id: id,
       title: title.isNotEmpty ? title : null,
-      messages: messages.map((messageId) => MessageEntity(id: messageId, content: '', senderId: '', timestamp: DateTime.now())).toList(),
+      messages: messages.map((messageId) => MessageEntity(id: messageId, content: '', timestamp: DateTime.now(), sender: '')).toList(),
       userId: userId, // Aquí deberías asignar el userId correspondiente
     );
   }
