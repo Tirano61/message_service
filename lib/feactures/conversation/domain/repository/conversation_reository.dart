@@ -7,6 +7,7 @@ abstract class ConversationRepository {
   Future<List<ConversationEntity>> getConversations();
   Future<void> deleteConversation(String conversationId);
   Future<void> updateConversation(String conversationId, String title, String description);
-  Future<String> getConversationDetails(String conversationId);  
+  Future<String> getConversation(String conversationId);  
+  Future<ConversationEntity> getAllConversations(String token, String userId);  
 
 } 

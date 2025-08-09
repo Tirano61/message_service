@@ -10,6 +10,14 @@ abstract class ConversationRemoteDataSource {
     required String userId,
     required String title,
   });
+  Future<List<ConversationEntity>> getConversations({
+    required String token,
+    String? type, // 'user' | 'tecnico'
+  });
+  Future<List<ConversationEntity>> getAllConversations({
+    required String token,
+    required String userId,
+  });
 }
 
 class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
@@ -44,6 +52,63 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       return model.toEntity();
     } else {
       throw Exception('Failed to create conversation: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  @override
+  Future<List<ConversationEntity>> getConversations({
+    required String token,
+    String? type,
+  }) async {
+    final path = type == null || type.isEmpty
+        ? '$_baseUrl/conversation'
+        : '$_baseUrl/conversation?type=$type';
+    final url = Uri.parse(path);
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data
+            .map((e) => ConversationsModel.fromJson(e).toEntity())
+            .toList();
+      } else {
+        throw Exception('Unexpected response format for conversations list');
+      }
+    } else {
+      throw Exception('Failed to fetch conversations: ${response.statusCode} ${response.body}');
+    }
+  }
+  
+  @override
+  Future<List<ConversationEntity>> getAllConversations({required String token, required String userId}) async {
+    final url = Uri.parse('$_baseUrl/conversation/all');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data
+            .map((e) => ConversationsModel.fromJson(e).toEntity())
+            .toList();
+      } else {
+        throw Exception('Unexpected response format for conversations list');
+      }
+    } else {
+      throw Exception('Failed to fetch conversations: ${response.statusCode} ${response.body}');
     }
   }
 }

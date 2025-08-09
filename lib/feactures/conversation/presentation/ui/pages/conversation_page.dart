@@ -97,14 +97,28 @@ class _RoleCard extends StatelessWidget {
 }
 
 // Página que lista conversaciones (placeholder usando el Bloc existente)
-class ConversationListPage extends StatelessWidget {
+class ConversationListPage extends StatefulWidget {
   final String type; // 'user' o 'tecnico'
   const ConversationListPage({super.key, required this.type});
 
   @override
+  State<ConversationListPage> createState() => _ConversationListPageState();
+}
+
+class _ConversationListPageState extends State<ConversationListPage> {
+  @override
+  void initState() {
+    super.initState();
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthAuthenticatedState) {
+      context.read<ConversationBloc>().add(LoadConversationsEvent(token: authState.user.token, type: widget.type));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Lista de $type')),
+      appBar: AppBar(title: Text('Lista de ${widget.type}')),
       body: BlocBuilder<ConversationBloc, ConversationState>(
         builder: (context, state) {
           if (state is ConversationLoadingState) {
@@ -120,7 +134,7 @@ class ConversationListPage extends StatelessWidget {
                 final conversation = conversations[index];
                 return ListTile(
                   title: Text(conversation.title ?? 'Sin título'),
-                  subtitle: Text('Tipo: $type'),
+                  subtitle: Text('Tipo: ${widget.type}'),
                   onTap: () {},
                 );
               },
@@ -131,6 +145,61 @@ class ConversationListPage extends StatelessWidget {
           return const SizedBox.shrink();
         },
       ),
+    floatingActionButton: _NewConversationFab(type: widget.type),
+    );
+  }
+}
+
+class _NewConversationFab extends StatelessWidget {
+  final String type;
+  const _NewConversationFab({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      tooltip: 'Nueva conversación',
+      child: const Icon(Icons.add),
+      onPressed: () async {
+        final titleController = TextEditingController();
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Nueva conversación'),
+            content: TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Título',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, titleController.text.trim()),
+                child: const Text('Crear'),
+              ),
+            ],
+          ),
+        );
+
+        if (result != null && result.isNotEmpty) {
+          final authState = context.read<AuthBloc>().state;
+          if (authState is AuthAuthenticatedState) {
+            final token = authState.user.token;
+            final userId = authState.user.id;
+            context.read<ConversationBloc>().add(
+              CreateConversationEvent(token: token, userId: userId, title: result),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Debes iniciar sesión')),
+            );
+          }
+        }
+      },
     );
   }
 }

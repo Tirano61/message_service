@@ -43,4 +43,16 @@ class ConversationRepositoryImpl implements ConversationRepository {
     // TODO: implementar usando remoteDataSource cuando el endpoint esté disponible
     throw UnimplementedError();
   }
+  
+  @override
+  Future<ConversationEntity> getAllConversations(String token, String userId) {
+    // TODO: implement getAllConversations
+    throw UnimplementedError();
+  }
+  
+  @override
+  Future<String> getConversation(String conversationId) {
+    // TODO: implement getConversation
+    throw UnimplementedError();
+  }
 }

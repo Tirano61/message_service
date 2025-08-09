@@ -43,7 +43,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         final messageEntity = MessageEntity(
           id: uuid.v4(), // Generate a unique ID for the message
           content: event.message,
-          senderId: userEntity.id, // Example sender ID
+          sender: userEntity.role, // Example sender ID
           timestamp: DateTime.now(),
         );
         await messageDataSource.sendMessage(messageEntity);
