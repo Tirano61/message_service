@@ -8,7 +8,8 @@ class UserModel extends UserEntity{
     required super.id, 
     required super.fullName, 
     required super.email, 
-    required super.token,    
+  required super.token,
+  required super.role,
   });
 
   // Convierte un mapa a una instancia de UserModel
@@ -18,6 +19,7 @@ class UserModel extends UserEntity{
       fullName: json['fullName'],
       email   : json['email'],
       token   : json['token'],
+      role    : json['role'] ?? 'user',
 // Maneja el caso de imageUrl nulo
     );
   }
@@ -28,12 +30,13 @@ class UserModel extends UserEntity{
       'fullName': fullName,
       'email'   : email,
       'token'   : token,
+      'role'    : role,
 
     };
   }
   @override 
   String toString() {
-    return 'UserModel(id: $id, fullName: $fullName, email: $email, token: $token)';
+    return 'UserModel(id: $id, fullName: $fullName, email: $email, token: $token, role: $role)';
   }
   
 }

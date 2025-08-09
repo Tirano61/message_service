@@ -11,4 +11,8 @@ class GetConversationsUseCase {
     return await _conversationRepository.getConversations();
   }
 
+  Future<ConversationEntity?> createConveersation(String userId, String title, String token) async {
+    return await _conversationRepository.createConversation( userId, title, token );
+  }
+
 }

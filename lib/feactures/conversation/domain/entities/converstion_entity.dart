@@ -5,6 +5,7 @@ class ConversationEntity {
   final String id;
   final String? title;
   final List<MessageEntity> messages;
+  final String userId;
 
-  ConversationEntity({required this.id, this.title, required this.messages});
+  ConversationEntity({required this.id, this.title, required this.messages, required this.userId});
 }

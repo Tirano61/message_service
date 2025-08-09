@@ -6,19 +6,40 @@ class ConversationsModel {
 
   final String id;
   final String title;
-  final List<String> messages;  
+  final List<String> messages;
+  final String userId;
 
   ConversationsModel({
     required this.id,
     required this.title,
     required this.messages,
+    required this.userId,
   });
+
+  factory ConversationsModel.fromJson(dynamic json) {
+    return ConversationsModel(
+      id: json['id'] ?? json['_id'] ?? '',
+      title: json['title'] ?? '',
+      messages: (json['messages'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      userId: json['userId'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'messages': messages,
+      'userId': userId,
+    };
+  }
 
   factory ConversationsModel.fromEntity(ConversationEntity entity) {
     return ConversationsModel(
       id: entity.id,
       title: entity.title ?? '',
       messages: entity.messages.map((message) => message.id).toList(),
+      userId: entity.userId,
     );
   }
   ConversationEntity toEntity() {
@@ -26,6 +47,7 @@ class ConversationsModel {
       id: id,
       title: title.isNotEmpty ? title : null,
       messages: messages.map((messageId) => MessageEntity(id: messageId, content: '', senderId: '', timestamp: DateTime.now())).toList(),
+      userId: userId, // Aquí deberías asignar el userId correspondiente
     );
   }
 

@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
-import 'package:message_service/feactures/categories/data/datasourse/category_remote_datasourse.dart';
-import 'package:message_service/feactures/categories/data/repository_impl/category_repository_imol.dart';
-import 'package:message_service/feactures/categories/domain/use_case/get_categiry_usecase.dart';
-import 'package:message_service/feactures/categories/presentation/bloc/category_bloc.dart';
-import 'package:message_service/feactures/categories/presentation/page/category_page.dart';
-import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
-import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
-import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
+import 'package:message_service/feactures/conversation/presentation/ui/pages/conversation_page.dart';
 
 class Login extends StatelessWidget {
   Login({super.key});
@@ -28,17 +20,7 @@ class Login extends StatelessWidget {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => BlocProvider<CategoryBloc>(
-                  create: (_) => CategoryBloc(
-                    getCategoriesUseCase: GetCategoriesUseCase(
-                      categoryRepository: CategoryRepositoryImpl(
-                        categoryRemoteDataSource: CategoryRemoteDataSourceImpl()
-                      )
-                    ),
-                    userEntity: state.user,
-                  ),
-                  child: CategoryPage(),
-                ),
+                builder: (_) => const ConversationPage(),
               ),
             );
           }
