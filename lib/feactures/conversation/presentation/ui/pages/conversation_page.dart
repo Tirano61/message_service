@@ -1,17 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:message_service/feactures/categories/presentation/page/category_page.dart';
+import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 
-
+// Página menú según rol
 class ConversationPage extends StatelessWidget {
   const ConversationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    String role = 'user';
+    if (authState is AuthAuthenticatedState) {
+      role = authState.user.role;
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Conversaciones')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _RoleCard(
+              title: 'Conversaciones usuario',
+              icon: Icons.chat_bubble_outline,
+              color: Colors.blue,
+              onTap: () => _openList(context, 'user'),
+            ),
+            if (role.toLowerCase() == 'tecnico') ...[
+              const SizedBox(height: 16),
+              _RoleCard(
+                title: 'Conversaciones técnico',
+                icon: Icons.build_outlined,
+                color: Colors.deepPurple,
+                onTap: () => _openList(context, 'tecnico'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openList(BuildContext context, String type) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ConversationListPage(type: type)),
+    );
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _RoleCard({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: color.withOpacity(0.15),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Página que lista conversaciones (placeholder usando el Bloc existente)
+class ConversationListPage extends StatelessWidget {
+  final String type; // 'user' o 'tecnico'
+  const ConversationListPage({super.key, required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Lista de $type')),
       body: BlocBuilder<ConversationBloc, ConversationState>(
         builder: (context, state) {
           if (state is ConversationLoadingState) {
@@ -19,7 +112,7 @@ class ConversationPage extends StatelessWidget {
           } else if (state is ConversationLoadedState) {
             final List<ConversationEntity> conversations = state.conversations;
             if (conversations.isEmpty) {
-              return const Center(child: Text('No tienes conversaciones.'));
+              return const Center(child: Text('No hay conversaciones.'));
             }
             return ListView.builder(
               itemCount: conversations.length,
@@ -27,9 +120,8 @@ class ConversationPage extends StatelessWidget {
                 final conversation = conversations[index];
                 return ListTile(
                   title: Text(conversation.title ?? 'Sin título'),
-                  onTap: () {
-                    // Navega a la pantalla de mensajes de esta conversación
-                  },
+                  subtitle: Text('Tipo: $type'),
+                  onTap: () {},
                 );
               },
             );
@@ -38,17 +130,6 @@ class ConversationPage extends StatelessWidget {
           }
           return const SizedBox.shrink();
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navega a la página de categorías de productos
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CategoryPage()),
-          );
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'Nueva conversación',
       ),
     );
   }
