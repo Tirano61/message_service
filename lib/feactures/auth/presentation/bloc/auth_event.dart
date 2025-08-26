@@ -15,3 +15,10 @@ class AuthRequestEvent extends AuthEvent {
   });
 
 }
+
+class GuestAuthenticatedEvent extends AuthEvent {
+  final String sessionToken;
+  final String conversationId;
+
+  GuestAuthenticatedEvent({required this.sessionToken, required this.conversationId});
+}

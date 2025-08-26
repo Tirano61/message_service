@@ -1,35 +1,45 @@
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:message_service/core/session_manager.dart';
+import 'package:socket_io_client/socket_io_client.dart' as socketIO;
 
 class SocketService {
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
-  late IO.Socket socket;
+  late socketIO.Socket socket;
 
   SocketService._internal();
 
   void connect({required String token}) {
-    socket = IO.io(
-      "http://10.0.2.2:3000",
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .setExtraHeaders({'authentication': token}) 
-          .build()
-          
-      
+    final builder = socketIO.OptionBuilder().setTransports(['websocket']);
+
+    // If JWT token provided (user logged in) use it. Otherwise, if there is an anonymous
+    // session (session_token + conversationId) use that. Do not mix both.
+    if (token.isNotEmpty) {
+      builder.setAuth({'token': token});
+    } else {
+      final sToken = SessionManager().sessionToken;
+      final convId = SessionManager().conversationId;
+      if (sToken != null && sToken.isNotEmpty && convId != null && convId.isNotEmpty) {
+        builder.setAuth({'conversationId': convId, 'session_token': sToken});
+      }
+    }
+
+    socket = socketIO.io(
+      'http://10.0.2.2:3000',
+      builder.build(),
     );
-    
+
     socket.connect();
 
     socket.onConnect((_) {
-      print("Connected to socket server");
+      print('Connected to socket server');
     });
 
     socket.onDisconnect((_) {
-      print("Disconnected from socket server");
+      print('Disconnected from socket server');
     });
 
     socket.onConnectError((data) {
-      print("Connection Error: $data");
+      print('Connection Error: $data');
     });
   }
 
@@ -41,8 +51,20 @@ class SocketService {
     socket.on(event, handler);
   }
 
+  void once(String event, dynamic handler) {
+    socket.once(event, handler);
+  }
+
+  void off(String event, [dynamic handler]) {
+    if (handler != null) {
+      socket.off(event, handler);
+    } else {
+      socket.off(event);
+    }
+  }
+
   void emit(String event, dynamic data) {
-    print("Emitting event: $event with data: $data");
+    print('Emitting event: $event with data: $data');
     socket.emit(event, data);
   }
 }

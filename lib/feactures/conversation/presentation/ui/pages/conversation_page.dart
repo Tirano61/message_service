@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
+import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 // Página menú según rol
 class ConversationPage extends StatelessWidget {
@@ -112,15 +113,25 @@ class _ConversationListPageState extends State<ConversationListPage> {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticatedState) {
       context.read<ConversationBloc>().add(LoadConversationsEvent(token: authState.user.token, type: widget.type));
+    } else {
+      // anonymous: load public/anonymous conversations (backend should support type='anonymous')
+      context.read<ConversationBloc>().add(LoadConversationsEvent(token: '', type: 'anonymous'));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Lista de ${widget.type}')),
-      body: BlocBuilder<ConversationBloc, ConversationState>(
-        builder: (context, state) {
+  appBar: AppBar(title: Text('Lista de ${widget.type}')),
+      body: BlocListener<ConversationBloc, ConversationState>(
+        listener: (context, state) {
+          if (state is ConversationCreatedState) {
+            // navigate to message page for the created conversation
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MessagePage()));
+          }
+        },
+        child: BlocBuilder<ConversationBloc, ConversationState>(
+          builder: (context, state) {
           if (state is ConversationLoadingState) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is ConversationLoadedState) {
@@ -143,7 +154,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
             return Center(child: Text('Error: ${state.message}'));
           }
           return const SizedBox.shrink();
-        },
+          },
+        ),
       ),
     floatingActionButton: _NewConversationFab(type: widget.type),
     );
@@ -194,8 +206,9 @@ class _NewConversationFab extends StatelessWidget {
               CreateConversationEvent(token: token, userId: userId, title: result),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Debes iniciar sesión')),
+            // anonymous creation: pass empty token/userId; server will create an anonymous conversation and return session_token
+            context.read<ConversationBloc>().add(
+              CreateConversationEvent(token: '', userId: '', title: result),
             );
           }
         }

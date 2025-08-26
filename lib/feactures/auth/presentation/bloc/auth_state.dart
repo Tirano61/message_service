@@ -10,6 +10,12 @@ final class AuthAuthenticatedState extends AuthState {
   final UserEntity user;
   AuthAuthenticatedState({required this.user});
 }
+final class AuthGuestAuthenticatedState extends AuthState {
+  final String sessionToken;
+  final String conversationId;
+
+  AuthGuestAuthenticatedState({required this.sessionToken, required this.conversationId});
+}
 final class AuthErrorState extends AuthState {
   final String message;
 

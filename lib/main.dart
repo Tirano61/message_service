@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/core/services/socket_service.dart';
+import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
@@ -15,6 +16,9 @@ import 'package:message_service/feactures/message/presentation/bloc/message_bloc
 
 
 void main() {
+  // Ensure no anonymous session persists on cold start
+  SessionManager().sessionToken = null;
+  SessionManager().conversationId = null;
   runApp(const MyApp());
 }
 
@@ -50,9 +54,11 @@ class MyApp extends StatelessWidget {
           }
         ),
       ],
-      child: MaterialApp( 
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Message Service',
         theme: ThemeData(
+          
           colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 132, 0, 255)),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
