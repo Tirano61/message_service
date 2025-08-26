@@ -13,6 +13,11 @@ final class ConversationLoadedState extends ConversationState {
 
   ConversationLoadedState({required this.conversations});
 }
+final class ConversationCreatedState extends ConversationState {
+  final ConversationEntity conversation;
+
+  ConversationCreatedState({required this.conversation});
+}
 final class ConversationErrorState extends ConversationState {
   final String message;
 

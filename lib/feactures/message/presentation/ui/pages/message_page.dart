@@ -27,7 +27,9 @@ class _MessagePageState extends State<MessagePage> {
   @override
   void initState() {  
     super.initState();
-    context.read<MessageBloc>().add(ConnectServerEvent());
+  context.read<MessageBloc>().add(ConnectServerEvent());
+  // Start listening for incoming messages (listen once)
+  context.read<MessageBloc>().add(LoadMessageEvent());
     // Aquí podrías inicializar la conexión al servidor o cualquier otra configuración necesaria.
   }
 
@@ -64,67 +66,78 @@ class _MessagePageState extends State<MessagePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final isMe = message['isMe'] as bool;
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isMe ? Colors.lightBlue[100] : Colors.grey[300],
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
-                        bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
+      body: BlocListener<MessageBloc, MessageState>(
+        listener: (context, state) {
+          if (state is MessageLoadedState) {
+            setState(() {
+              messages.add({'text': state.messages, 'isMe': false});
+            });
+            // Escuchar el siguiente mensaje
+            context.read<MessageBloc>().add(LoadMessageEvent());
+          }
+        },
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final message = messages[index];
+                  final isMe = message['isMe'] as bool;
+                  return Align(
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.lightBlue[100] : Colors.grey[300],
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
+                          bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        message['text'] as String,
+                        style: const TextStyle(fontSize: 16),
                       ),
                     ),
-                    child: Text(
-                      message['text'] as String,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Escribe un mensaje...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(24)),
-                        borderSide: BorderSide.none,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        hintText: 'Escribe un mensaje...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Color(0xFFF0F0F0),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                       ),
-                      filled: true,
-                      fillColor: Color(0xFFF0F0F0),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: _sendMessage,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: Colors.blue),
+                    onPressed: _sendMessage,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

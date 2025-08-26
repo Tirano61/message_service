@@ -5,6 +5,7 @@
 import 'dart:async';
 
 import 'package:message_service/core/services/socket_service.dart';
+import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 
 abstract class MessageDataSource {
@@ -28,17 +29,32 @@ class MessageDataSourceImpl implements MessageDataSource {
   @override
   Future<MessageEntity> getMessage() async {
     final completer = Completer<MessageEntity>();
-    _socketService.on('message_received', (data) {
-      data = data as Map<String, dynamic>;
-      MessageEntity message = MessageEntity.fromJson(data);
-      completer.complete(message);
+    // El servidor emite 'message_received' para nuevos mensajes — usar once para no completar varias veces
+    _socketService.once('message_received', (data) {
+      try {
+        data = data as Map<String, dynamic>;
+        MessageEntity message = MessageEntity.fromJson(data);
+        if (!completer.isCompleted) completer.complete(message);
+      } catch (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      }
     });
     return completer.future;
   }
 
   @override
   Future<void> sendMessage(MessageEntity message)async {
-    return _socketService.emit('client-send-message', message.toJson());
+    final sessionToken = SessionManager().sessionToken;
+    final conversationId = SessionManager().conversationId;
+    if (sessionToken != null && sessionToken.isNotEmpty && conversationId != null && conversationId.isNotEmpty) {
+      final payload = {
+        'conversationId': conversationId,
+        'session_token': sessionToken,
+        'sender': message.sender,
+        'content': message.content
+      };
+      return _socketService.emit('client-send-user', payload);
+    }
   }
 
   @override
@@ -49,7 +65,8 @@ class MessageDataSourceImpl implements MessageDataSource {
   
   @override
   void connectToServer(String token) {
-    _socketService.connect(token: token);
+  // Only use the provided JWT token; do not substitute session_token here.
+  _socketService.connect(token: token);
   }
   
   @override

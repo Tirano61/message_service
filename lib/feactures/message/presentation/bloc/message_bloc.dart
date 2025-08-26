@@ -14,41 +14,35 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final UserEntity userEntity;
   MessageBloc({required this.messageDataSource, required this.userEntity}) : super(MessageInitialState()) {
     on<ConnectServerEvent>((event, emit) {
-           
       try {
-        final connect =  messageDataSource.connectToServer(userEntity.token);
+        messageDataSource.connectToServer(event.token);
         emit(ServerConnectedState());
-       // Assuming empty list for initial state
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
     });
     on<LoadMessageEvent>((event, emit)async {
       emit(MessageLoadingState());
-      final messages = await messageDataSource.getMessage();
-      
       try {
-      
-        
-        
+  final msg = await messageDataSource.getMessage();
+  emit(MessageLoadedState(msg.content));
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
     });
 
     on<SendMessageEvent>((event, emit) async {
-      emit(MessageLoadingState());
+      // No need to block UI waiting server echo; send and return
       try {
         final Uuid uuid = Uuid();
         final messageEntity = MessageEntity(
           id: uuid.v4(), // Generate a unique ID for the message
           content: event.message,
           sender: userEntity.role, // Example sender ID
-          timestamp: DateTime.now(),
+          created_at: DateTime.now().toUtc(),
         );
         await messageDataSource.sendMessage(messageEntity);
-        final messages = await messageDataSource.getMessage();
-        emit(MessageLoadedState( messages.content));
+        // Optionally emit a local state if needed
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }

@@ -33,16 +33,22 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     required String title,
   }) async {
     final url = Uri.parse('$_baseUrl/conversation/create');
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token.isNotEmpty) {
+      headers['auth'] = token;
+    }
+    final payload = <String, dynamic>{'title': title};
+    // "user" must be a UUID and only sent when the user is authenticated
+    if (userId.isNotEmpty) {
+      payload['user'] = userId;
+    }
+
     final response = await http.post(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'userId': userId,
-        'title': title,
-      }),
+      headers: headers,
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -65,12 +71,15 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
         : '$_baseUrl/conversation?type=$type';
     final url = Uri.parse(path);
 
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token.isNotEmpty) {
+      headers['auth'] = token;
+    }
     final response = await http.get(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
@@ -90,12 +99,15 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
   @override
   Future<List<ConversationEntity>> getAllConversations({required String token, required String userId}) async {
     final url = Uri.parse('$_baseUrl/conversation/all');
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token.isNotEmpty) {
+      headers['auth'] = token;
+    }
     final response = await http.get(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: headers,
     );
 
     if (response.statusCode == 200) {

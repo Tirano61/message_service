@@ -66,6 +66,20 @@ class Login extends StatelessWidget {
                       child: const Text('Ingresar'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        // Directly navigate to the anonymous conversations list.
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ConversationListPage(type: 'anonymous')),
+                        );
+                      },
+                      child: const Text('Entrar como invitado'),
+                    ),
+                  ),
                 ],
               ),
             );

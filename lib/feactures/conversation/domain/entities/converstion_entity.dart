@@ -4,8 +4,19 @@ import 'package:message_service/feactures/message/domain/entities/message_entity
 class ConversationEntity {
   final String id;
   final String? title;
-  final List<MessageEntity> messages;
-  final String userId;
+  final List<MessageEntity>? messages;
+  final String? userId;
+  final String? sessionToken;
+  final DateTime? createdAt; // token para sesiones anónimas
+  final DateTime? updatedAt; // token para sesiones anónimas
 
-  ConversationEntity({required this.id, this.title, required this.messages, required this.userId});
+  ConversationEntity({
+    required this.id,
+    this.title,
+    required this.messages,
+    required this.userId,
+    this.sessionToken,
+    this.createdAt,
+    this.updatedAt,
+  });
 }

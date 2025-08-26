@@ -2,6 +2,8 @@ import 'package:bloc/bloc.dart';
 import 'package:message_service/feactures/conversation/data/datasource/conversation_remote_datasource.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:meta/meta.dart';
+import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/core/services/socket_service.dart';
 
 part 'conversation_event.dart';
 part 'conversation_state.dart';
@@ -24,11 +26,24 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
         title: event.title,
       );
 
+      // If backend returned a session token (conversación anónima), store and connect
+      // Only store session_token when the creation was anonymous (no userId provided)
+      if ((event.userId == null || event.userId.isEmpty) && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
+        SessionManager().sessionToken = newConv.sessionToken;
+        SessionManager().conversationId = newConv.id;
+        try {
+          // Pass empty token so SocketService chooses the anonymous session stored in SessionManager
+          SocketService().connect(token: '');
+        } catch (_) {}
+      }
+
       if (previous is ConversationLoadedState) {
         final updated = List<ConversationEntity>.from(previous.conversations)..insert(0, newConv);
-        emit(ConversationLoadedState(conversations: updated));
+  emit(ConversationLoadedState(conversations: updated));
+  emit(ConversationCreatedState(conversation: newConv));
       } else {
-        emit(ConversationLoadedState(conversations: [newConv]));
+  emit(ConversationLoadedState(conversations: [newConv]));
+  emit(ConversationCreatedState(conversation: newConv));
       }
     } catch (e) {
       emit(ConversationErrorState(message: e.toString()));
@@ -38,10 +53,15 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
   Future<void> _onLoadConversations( event, emit ) async {
     emit(ConversationLoadingState());
     try {
-      final list = await conversationDataSource.getAllConversations(
-        token: event.token,
-        userId: event.userId,
-      );
+      List<ConversationEntity> list;
+      if (event.type != null && event.type!.isNotEmpty) {
+        list = await conversationDataSource.getConversations(token: event.token, type: event.type);
+      } else if ((event as dynamic).userId != null) {
+        // fallback to getAllConversations if userId provided
+        list = await conversationDataSource.getAllConversations(token: event.token, userId: (event as dynamic).userId);
+      } else {
+        list = await conversationDataSource.getConversations(token: event.token);
+      }
       emit(ConversationLoadedState(conversations: list));
     } catch (e) {
       emit(ConversationErrorState(message: e.toString()));
