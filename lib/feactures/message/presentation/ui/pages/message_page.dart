@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
+import 'package:message_service/core/services/socket_service.dart';
+import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
+import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MessagePage extends StatefulWidget {
-  const MessagePage({super.key});
+  final String conversationId;
+  final String title;
+  final List<dynamic>? initialMessages;
+  const MessagePage({super.key, this.conversationId = '', this.title = 'Messages', this.initialMessages});
 
   @override
   State<MessagePage> createState() => _MessagePageState();
@@ -30,7 +37,53 @@ class _MessagePageState extends State<MessagePage> {
   context.read<MessageBloc>().add(ConnectServerEvent());
   // Start listening for incoming messages (listen once)
   context.read<MessageBloc>().add(LoadMessageEvent());
+    // Inicializar mensajes si vienen como parámetro
+    final authState = context.read<AuthBloc>().state;
+    if (widget.initialMessages != null && widget.initialMessages!.isNotEmpty) {
+      messages.clear();
+      for (final m in widget.initialMessages!) {
+        if (m is Map<String, dynamic>) {
+          messages.add({'text': m['content'] ?? m['message'] ?? '', 'isMe': _isMine(m, authState)});
+        }
+      }
+    } else {
+      // si no vinieron mensajes como parámetro, intentar cargar desde DB local
+      final convId = widget.conversationId.isNotEmpty ? widget.conversationId : SessionManager().conversationId;
+      if (convId != null && convId.isNotEmpty) {
+        try {
+          final localDs = LocalMessageDataSource();
+          localDs.getMessages(convId).then((list) {
+            if (list.isNotEmpty) {
+              setState(() {
+                messages.clear();
+                for (final m in list) {
+                  messages.add({'text': m.content, 'isMe': (m.sender == (authState is AuthAuthenticatedState ? authState.user.id : null))});
+                }
+              });
+            }
+          });
+        } catch (_) {}
+      }
+    }
+    // Merge temporales almacenados en SessionManager
+    final convId = widget.conversationId.isNotEmpty ? widget.conversationId : SessionManager().conversationId;
+    if (convId != null && convId.isNotEmpty) {
+      final stored = SessionManager().messagesByConversation[convId];
+      if (stored != null && stored.isNotEmpty) {
+        for (final m in stored) {
+          messages.add({'text': m['text'] ?? '', 'isMe': (m['sender'] == (authState is AuthAuthenticatedState ? authState.user.id : null))});
+        }
+      }
+    }
     // Aquí podrías inicializar la conexión al servidor o cualquier otra configuración necesaria.
+  }
+
+  bool _isMine(Map<String, dynamic> m, dynamic authState) {
+    final sender = m['sender']?.toString() ?? '';
+    if (authState is AuthAuthenticatedState) {
+      return sender == authState.user.id || sender == authState.user.role;
+    }
+    return false;
   }
 
   void _sendMessage() {
@@ -49,19 +102,28 @@ class _MessagePageState extends State<MessagePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Volver',
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
         centerTitle: true,
         elevation: 6,
-        title: const Text('Messages'),
+        title: Text(widget.title),
         actions: [
           BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
-              Color iconColor;
-              if (state is ServerConnectedState) {
-                iconColor = Colors.green;
-              } else {
-                iconColor = Colors.red;
+              // Preferir el estado real del socket si está disponible
+              try {
+                final connected = SocketService().isConnected();
+                return Icon(Icons.connect_without_contact, color: connected ? Colors.green : Colors.red);
+              } catch (_) {
+                // Fallback al estado del bloc
+                final iconColor = state is ServerConnectedState ? Colors.green : Colors.red;
+                return Icon(Icons.connect_without_contact, color: iconColor);
               }
-              return Icon(Icons.connect_without_contact, color: iconColor);
             },
           ),
         ],
@@ -69,9 +131,14 @@ class _MessagePageState extends State<MessagePage> {
       body: BlocListener<MessageBloc, MessageState>(
         listener: (context, state) {
           if (state is MessageLoadedState) {
-            setState(() {
-              messages.add({'text': state.messages, 'isMe': false});
-            });
+            final msg = state.message;
+            // deduplicar por contenido+timestamp
+            final exists = messages.any((m) => m['text'] == msg.content && (m['timestamp'] ?? '') == msg.created_at.toIso8601String());
+            if (!exists) {
+              setState(() {
+                messages.add({'text': msg.content, 'isMe': _isMine(msg.toJson(), context.read<AuthBloc>().state), 'timestamp': msg.created_at.toIso8601String()});
+              });
+            }
             // Escuchar el siguiente mensaje
             context.read<MessageBloc>().add(LoadMessageEvent());
           }

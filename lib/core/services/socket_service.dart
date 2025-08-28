@@ -63,6 +63,15 @@ class SocketService {
     }
   }
 
+  /// Devuelve true si el socket está conectado actualmente.
+  bool isConnected() {
+    try {
+      return socket.connected;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void emit(String event, dynamic data) {
     print('Emitting event: $event with data: $data');
     socket.emit(event, data);

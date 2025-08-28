@@ -10,9 +10,9 @@ final class MessageInitialState extends MessageState {}
 final class MessageLoadingState extends MessageState {}
 
 final class MessageLoadedState extends MessageState {
-  final String messages;
+  final MessageEntity message;
 
-  MessageLoadedState(this.messages);
+  MessageLoadedState(this.message);
 }
 
 final class MessageErrorState extends MessageState {

@@ -25,7 +25,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       emit(MessageLoadingState());
       try {
   final msg = await messageDataSource.getMessage();
-  emit(MessageLoadedState(msg.content));
+  emit(MessageLoadedState(msg));
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
@@ -38,7 +38,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         final messageEntity = MessageEntity(
           id: uuid.v4(), // Generate a unique ID for the message
           content: event.message,
-          sender: userEntity.role, // Example sender ID
+          sender: userEntity.id, // use user id as sender
           created_at: DateTime.now().toUtc(),
         );
         await messageDataSource.sendMessage(messageEntity);

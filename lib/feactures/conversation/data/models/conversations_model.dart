@@ -6,35 +6,59 @@ class ConversationsModel {
 
   final String id;
   final String title;
-  final List<String> messages;
+  final List<MessageEntity> messages;
   final String userId;
   final String? sessionToken;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   ConversationsModel({
     required this.id,
     required this.title,
-    required this.messages,
-    required this.userId,
-    this.sessionToken,
+  required this.messages,
+  required this.userId,
+  this.sessionToken,
+  this.createdAt,
+  this.updatedAt,
   });
 
   factory ConversationsModel.fromJson(dynamic json) {
     return ConversationsModel(
       id: json['id'] ?? json['_id'] ?? '',
       title: json['title'] ?? '',
-      messages: (json['messages'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
-  userId: json['userId'] ?? json['user_id'] ?? '',
-  sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
+      messages: (json['messages'] as List?)?.map((e) {
+        if (e is Map<String, dynamic>) {
+          return MessageEntity.fromJson(Map<String, dynamic>.from(e));
+        } else if (e is String) {
+          // If only id provided, create placeholder
+          return MessageEntity(id: e, content: '', sender: '', created_at: DateTime.now().toUtc());
+        } else {
+          return MessageEntity(id: '', content: '', sender: '', created_at: DateTime.now().toUtc());
+        }
+      }).toList() ?? <MessageEntity>[],
+      userId: json['userId'] ?? json['user_id'] ?? '',
+      sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
+  createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
+  updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );
+  }
+
+  static DateTime? _parseDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is String) return DateTime.tryParse(raw)?.toUtc();
+    if (raw is int) return raw > 1000000000000 ? DateTime.fromMillisecondsSinceEpoch(raw, isUtc: true) : DateTime.fromMillisecondsSinceEpoch(raw * 1000, isUtc: true);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'title': title,
-      'messages': messages,
+  'messages': messages.map((m) => m.toJson()).toList(),
   'userId': userId,
   'session_token': sessionToken,
+  if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+  if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 
@@ -42,17 +66,21 @@ class ConversationsModel {
     return ConversationsModel(
       id: entity.id,
       title: entity.title ?? '',
-      messages: (entity.messages ?? []).map((message) => message.id).toList(),
-      userId: entity.userId ?? '',
+  messages: entity.messages ?? [],
+  userId: entity.userId ?? '',
+  createdAt: entity.createdAt,
+  updatedAt: entity.updatedAt,
     );
   }
   ConversationEntity toEntity() {
     return ConversationEntity(
   id: id,
   title: title.isNotEmpty ? title : null,
-  messages: messages.map((messageId) => MessageEntity(id: messageId, content: '',  created_at: DateTime.now(), sender: '')).toList(),
+  messages: messages,
   userId: userId, // Aquí deberías asignar el userId correspondiente
   sessionToken: sessionToken,
+  createdAt: createdAt,
+  updatedAt: updatedAt,
     );
   }
 

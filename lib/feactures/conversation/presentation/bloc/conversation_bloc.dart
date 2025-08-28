@@ -3,6 +3,7 @@ import 'package:message_service/feactures/conversation/data/datasource/conversat
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:meta/meta.dart';
 import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
 import 'package:message_service/core/services/socket_service.dart';
 
 part 'conversation_event.dart';
@@ -14,6 +15,32 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
   ConversationBloc({required this.conversationDataSource}) : super(ConversationInitial()) {
     on<CreateConversationEvent>(_onCreateConversation);
     on<LoadConversationsEvent>(_onLoadConversations);
+    on<DeleteConversationEvent>(_onDeleteConversation);
+  }
+
+  Future<void> _onDeleteConversation(event, emit) async {
+    final e = event as DeleteConversationEvent;
+    final id = e.conversationId;
+    final previous = state;
+    if (previous is ConversationLoadedState) {
+      // Remove locally first (user requested local deletion even if server fails)
+      final updated = List<ConversationEntity>.from(previous.conversations)
+        ..removeWhere((c) => c.id == id);
+      emit(ConversationLoadedState(conversations: updated));
+      // Eliminar mensajes y fingerprints locales asociados a la conversación
+      try {
+        SessionManager().messagesByConversation.remove(id);
+        SessionManager().messageFingerprintCounts.remove(id);
+        final local = LocalMessageDataSource();
+        await local.deleteConversationMessages(id);
+      } catch (_) {}
+      // Intentar borrar en servidor; si falla, reportar el error pero no hacer rollback local
+      try {
+        await conversationDataSource.deleteConversation(token: e.token, conversationId: id);
+      } catch (err) {
+        emit(ConversationErrorState(message: 'Error al eliminar en servidor: ${err.toString()}'));
+      }
+    }
   }
 
   Future<void> _onCreateConversation(event, emit) async {

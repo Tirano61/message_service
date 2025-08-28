@@ -4,6 +4,10 @@ import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart'
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
+import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/core/services/socket_service.dart';
+import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
+import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
 
 // Página menú según rol
 class ConversationPage extends StatelessWidget {
@@ -127,7 +131,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
         listener: (context, state) {
           if (state is ConversationCreatedState) {
             // navigate to message page for the created conversation
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MessagePage()));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: state.conversation.id, title: state.conversation.title ?? 'Conversación', initialMessages: state.conversation.messages?.map((m) => m.toJson()).toList())));
           }
         },
         child: BlocBuilder<ConversationBloc, ConversationState>(
@@ -140,13 +144,83 @@ class _ConversationListPageState extends State<ConversationListPage> {
               return const Center(child: Text('No hay conversaciones.'));
             }
             return ListView.builder(
+              padding: const EdgeInsets.all(12),
               itemCount: conversations.length,
               itemBuilder: (context, index) {
                 final conversation = conversations[index];
-                return ListTile(
-                  title: Text(conversation.title ?? 'Sin título'),
-                  subtitle: Text('Tipo: ${widget.type}'),
-                  onTap: () {},
+                final displayTitle = conversation.title ?? 'Sin título';
+                final created = conversation.createdAt;
+                final dateText = created != null ?
+                  '${created.toLocal().day}/${created.toLocal().month}/${created.toLocal().year} ${created.toLocal().hour}:${created.toLocal().minute.toString().padLeft(2,'0')}'
+                  : '';
+
+                return Dismissible(
+                  key: Key(conversation.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    color: Colors.red,
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) {
+                    // Dispatch delete event to bloc (incluir token si el usuario está autenticado)
+                    final authState = context.read<AuthBloc>().state;
+                    final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
+                    context.read<ConversationBloc>().add(DeleteConversationEvent(conversationId: conversation.id, token: token));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conversación eliminada')));
+                  },
+                  child: Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(dateText),
+                      onTap: () async {
+                        // If conversation has sessionToken, store it so MessageDataSource will use it
+                        if (conversation.sessionToken != null && conversation.sessionToken!.isNotEmpty) {
+                          SessionManager().sessionToken = conversation.sessionToken;
+                          SessionManager().conversationId = conversation.id;
+                          // Ensure socket connects using anonymous session
+                          try {
+                            SocketService().connect(token: '');
+                          } catch (_) {}
+                        }
+                        final convId = conversation.id;
+                        // 1) Intentar obtener mensajes desde DB local
+                        try {
+                          final localDs = LocalMessageDataSource();
+                          final localList = await localDs.getMessages(convId);
+                          if (localList.isNotEmpty) {
+                            final serializedLocal = localList.map((m) => m.toJson()).toList();
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serializedLocal)));
+                            return;
+                          }
+                        } catch (_) {
+                          // continue to remote fetch
+                        }
+
+                        // 2) Si no hay local, pedir historial al servidor
+                        try {
+                          final remote = MessageRemoteDataSourceImpl();
+                          final authState = context.read<AuthBloc>().state;
+                          final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
+                          final msgs = await remote.getMessages(token: token, conversationId: convId);
+                          final serialized = msgs.map((m) => m.toJson()).toList();
+                          // Guardar localmente para futuras entradas (solo texto/sender/created_at)
+                          try {
+                            SessionManager().messagesByConversation[convId] = serialized.map((e) => {'text': e['content'] ?? e['message'] ?? '', 'sender': e['sender'] ?? '', 'created_at': e['created_at'] ?? ''}).toList();
+                          } catch (_) {}
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serialized)));
+                        } catch (_) {
+                          // Si falla la petición remota, abrir con lo que pueda
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: conversation.messages?.map((m) => m.toJson()).toList())));
+                        }
+                      },
+                    ),
+                  ),
                 );
               },
             );

@@ -20,6 +20,8 @@ dependencies:
   socket_io_client: ^2.0.3
   http: ^1.4.0
   uuid: ^4.3.3
+  sqflite: ^2.2.8
+  path: ^1.8.4
 
 dev_dependencies:
   flutter_test:
