@@ -23,3 +23,10 @@ class CreateConversationEvent extends ConversationEvent {
 
 		LoadConversationsEvent({required this.token, this.type});
 	}
+
+	class DeleteConversationEvent extends ConversationEvent {
+		final String conversationId;
+		final String token;
+
+		DeleteConversationEvent({required this.conversationId, this.token = ''});
+	}

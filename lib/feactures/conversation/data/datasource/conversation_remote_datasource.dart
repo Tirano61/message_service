@@ -18,6 +18,7 @@ abstract class ConversationRemoteDataSource {
     required String token,
     required String userId,
   });
+  Future<void> deleteConversation({required String token, required String conversationId});
 }
 
 class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
@@ -121,6 +122,22 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       }
     } else {
       throw Exception('Failed to fetch conversations: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  @override
+  Future<void> deleteConversation({required String token, required String conversationId}) async {
+    final url = Uri.parse('$_baseUrl/conversation/$conversationId');
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token.isNotEmpty) headers['auth'] = token;
+
+    final response = await http.delete(url, headers: headers);
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return;
+    } else {
+      throw Exception('Failed to delete conversation: ${response.statusCode} ${response.body}');
     }
   }
 }
