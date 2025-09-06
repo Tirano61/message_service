@@ -35,10 +35,19 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       // No need to block UI waiting server echo; send and return
       try {
         final Uuid uuid = Uuid();
+    String senderId;
+    if (event.senderId != null && event.senderId!.isNotEmpty) {
+      senderId = event.senderId!;
+    } else if (userEntity.id.isNotEmpty) {
+      senderId = userEntity.id;
+    } else {
+      // For anonymous flows, mark sender as literal 'user' so server can identify it
+      senderId = 'user';
+    }
         final messageEntity = MessageEntity(
           id: uuid.v4(), // Generate a unique ID for the message
           content: event.message,
-          sender: userEntity.id, // use user id as sender
+            sender: senderId, // use provided senderId or user id or session token
           created_at: DateTime.now().toUtc(),
         );
         await messageDataSource.sendMessage(messageEntity);

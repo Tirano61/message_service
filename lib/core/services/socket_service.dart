@@ -31,15 +31,15 @@ class SocketService {
     socket.connect();
 
     socket.onConnect((_) {
-      print('Connected to socket server');
+      // connected
     });
 
     socket.onDisconnect((_) {
-      print('Disconnected from socket server');
+      // disconnected
     });
 
     socket.onConnectError((data) {
-      print('Connection Error: $data');
+      // connect error
     });
   }
 
@@ -73,7 +73,6 @@ class SocketService {
   }
 
   void emit(String event, dynamic data) {
-    print('Emitting event: $event with data: $data');
     socket.emit(event, data);
   }
 }

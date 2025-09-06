@@ -8,6 +8,7 @@ import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
 import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
+import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 
 // Página menú según rol
 class ConversationPage extends StatelessWidget {
@@ -130,8 +131,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
       body: BlocListener<ConversationBloc, ConversationState>(
         listener: (context, state) {
           if (state is ConversationCreatedState) {
-            // navigate to message page for the created conversation
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: state.conversation.id, title: state.conversation.title ?? 'Conversación', initialMessages: state.conversation.messages?.map((m) => m.toJson()).toList())));
+            // navigate to message page for the created conversation (push so user can go back)
+            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: state.conversation.id, title: state.conversation.title ?? 'Conversación', initialMessages: state.conversation.messages?.map((m) => m.toJson()).toList())));
           }
         },
         child: BlocBuilder<ConversationBloc, ConversationState>(
@@ -167,7 +168,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
                     // Dispatch delete event to bloc (incluir token si el usuario está autenticado)
                     final authState = context.read<AuthBloc>().state;
                     final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
-                    context.read<ConversationBloc>().add(DeleteConversationEvent(conversationId: conversation.id, token: token));
+                    context.read<ConversationBloc>().add(DeleteConversationEvent(conversationId: conversation.id, token: token, sessionToken: conversation.sessionToken));
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conversación eliminada')));
                   },
                   child: Card(
@@ -176,8 +177,21 @@ class _ConversationListPageState extends State<ConversationListPage> {
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(dateText),
+                      // Mostrar la fecha arriba y el título debajo
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dateText,
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            displayTitle,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                       onTap: () async {
                         // If conversation has sessionToken, store it so MessageDataSource will use it
                         if (conversation.sessionToken != null && conversation.sessionToken!.isNotEmpty) {
@@ -188,10 +202,12 @@ class _ConversationListPageState extends State<ConversationListPage> {
                             SocketService().connect(token: '');
                           } catch (_) {}
                         }
+
                         final convId = conversation.id;
+                        final localDs = LocalMessageDataSource();
+
                         // 1) Intentar obtener mensajes desde DB local
                         try {
-                          final localDs = LocalMessageDataSource();
                           final localList = await localDs.getMessages(convId);
                           if (localList.isNotEmpty) {
                             final serializedLocal = localList.map((m) => m.toJson()).toList();
@@ -199,24 +215,59 @@ class _ConversationListPageState extends State<ConversationListPage> {
                             return;
                           }
                         } catch (_) {
-                          // continue to remote fetch
+                          // ignore and try other sources
                         }
 
-                        // 2) Si no hay local, pedir historial al servidor
+                        // 2) Si no hay local en DB, comprobar SessionManager temporal y migrar a DB si existe
+                        try {
+                          final temp = SessionManager().messagesByConversation[convId];
+                          if (temp != null && temp.isNotEmpty) {
+                            for (final m in temp) {
+                              final content = m['text']?.toString() ?? '';
+                              final sender = m['sender']?.toString() ?? '';
+                              final createdRaw = m['created_at']?.toString() ?? '';
+                              DateTime createdAt;
+                              try {
+                                createdAt = DateTime.parse(createdRaw).toUtc();
+                              } catch (_) {
+                                createdAt = DateTime.now().toUtc();
+                              }
+                              final entity = MessageEntity(id: UniqueKey().toString(), content: content, sender: sender, created_at: createdAt);
+                              try {
+                                await localDs.insertMessage(convId, entity);
+                              } catch (_) {}
+                            }
+                            final migrated = await localDs.getMessages(convId);
+                            final serializedLocal = migrated.map((m) => m.toJson()).toList();
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serializedLocal)));
+                            return;
+                          }
+                        } catch (_) {
+                          // ignore
+                        }
+
+                        // 3) Si no hay datos locales, pedir historial al servidor y persistirlo
                         try {
                           final remote = MessageRemoteDataSourceImpl();
                           final authState = context.read<AuthBloc>().state;
                           final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
                           final msgs = await remote.getMessages(token: token, conversationId: convId);
                           final serialized = msgs.map((m) => m.toJson()).toList();
-                          // Guardar localmente para futuras entradas (solo texto/sender/created_at)
+                          // Guardar temporal y persistir en DB
                           try {
                             SessionManager().messagesByConversation[convId] = serialized.map((e) => {'text': e['content'] ?? e['message'] ?? '', 'sender': e['sender'] ?? '', 'created_at': e['created_at'] ?? ''}).toList();
                           } catch (_) {}
+                          try {
+                            for (final m in msgs) {
+                              await localDs.insertMessage(convId, m);
+                            }
+                          } catch (_) {}
                           Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serialized)));
+                          return;
                         } catch (_) {
-                          // Si falla la petición remota, abrir con lo que pueda
+                          // Si falla la petición remota, abrir con lo que haya en la entidad conversation
                           Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: conversation.messages?.map((m) => m.toJson()).toList())));
+                          return;
                         }
                       },
                     ),

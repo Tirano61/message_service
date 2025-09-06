@@ -36,7 +36,7 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
       } catch (_) {}
       // Intentar borrar en servidor; si falla, reportar el error pero no hacer rollback local
       try {
-        await conversationDataSource.deleteConversation(token: e.token, conversationId: id);
+        await conversationDataSource.deleteConversation(token: e.token, conversationId: id, sessionToken: e.sessionToken);
       } catch (err) {
         emit(ConversationErrorState(message: 'Error al eliminar en servidor: ${err.toString()}'));
       }
