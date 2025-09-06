@@ -27,6 +27,7 @@ class CreateConversationEvent extends ConversationEvent {
 	class DeleteConversationEvent extends ConversationEvent {
 		final String conversationId;
 		final String token;
+		final String? sessionToken;
 
-		DeleteConversationEvent({required this.conversationId, this.token = ''});
+		DeleteConversationEvent({required this.conversationId, this.token = '', this.sessionToken});
 	}

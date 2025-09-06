@@ -12,6 +12,7 @@ class LoadMessageEvent extends MessageEvent {}
 
 class SendMessageEvent extends MessageEvent {
   final String message;
+  final String? senderId; // optional sender id provided by UI (auth user id or 'local')
 
-  SendMessageEvent(this.message); 
+  SendMessageEvent(this.message, {this.senderId});
 }

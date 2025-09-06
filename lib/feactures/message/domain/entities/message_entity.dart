@@ -7,12 +7,21 @@ class MessageEntity {
   final String content;
   final String sender;
   final DateTime created_at;
+  final String? senderId;
+  final String? externalId;
+  final String? sessionId;
+  final String? n8nMessage;
 
   MessageEntity({
     required this.id,
     required this.content,
     required this.sender,
-    required this.created_at,
+  required this.created_at,
+  this.senderId,
+  this.externalId,
+  this.sessionId,
+  this.n8nMessage,
+  
   });
 
   factory MessageEntity.fromJson(Map<String, dynamic> json) {
@@ -23,6 +32,14 @@ class MessageEntity {
 
     if (raw == null) {
       timestamp = DateTime.now().toUtc();
+    } else if (raw is DateTime) {
+      timestamp = raw.toUtc();
+    } else if (raw is double) {
+      // treat as epoch ms if large, otherwise epoch s
+      final numVal = raw.toInt();
+      timestamp = numVal > 1000000000000
+          ? DateTime.fromMillisecondsSinceEpoch(numVal, isUtc: true)
+          : DateTime.fromMillisecondsSinceEpoch(numVal * 1000, isUtc: true);
     } else if (raw is int) {
       // Si el entero es grande (>1e12) lo tratamos como ms, si no como s
       timestamp = raw > 1000000000000
@@ -38,11 +55,20 @@ class MessageEntity {
       timestamp = DateTime.now().toUtc();
     }
 
+    try {
+      print('DBG MessageEntity.fromJson raw_created_at=${raw ?? 'null'} parsed=${timestamp.toIso8601String()} id=${json['id'] ?? ''} content=${json['content'] ?? ''}');
+    } catch (_) {}
+
     return MessageEntity(
       id: json['id'] as String,
       content: json['content'] as String,
-      sender: json['sender'] as String,
-      created_at: timestamp,
+  sender: (json['sender'] ?? json['from'] ?? '') as String,
+  created_at: timestamp,
+      senderId: (json['sender_id'] ?? json['senderId']) as String?,
+      externalId: json['external_id'] as String?,
+      sessionId: json['session_id'] as String?,
+      n8nMessage: json['n8n_message'] as String?,
+      
     );
   }
 
@@ -50,8 +76,12 @@ class MessageEntity {
     return {
       'id': id,
       'content': content,
-      'sender': sender,
-      'created_at': created_at.toIso8601String(),
+  'sender': sender,
+  'created_at': created_at.toIso8601String(),
+  'sender_id': senderId,
+  'external_id': externalId,
+  'session_id': sessionId,
+  'n8n_message': n8nMessage,
     };
   }
 }

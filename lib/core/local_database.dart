@@ -31,6 +31,10 @@ class LocalDatabase {
             conversation_id TEXT,
             content TEXT,
             sender TEXT,
+            sender_id TEXT,
+            external_id TEXT,
+            session_id TEXT,
+            n8n_message TEXT,
             created_at TEXT
           )
         ''');

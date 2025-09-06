@@ -18,7 +18,7 @@ abstract class ConversationRemoteDataSource {
     required String token,
     required String userId,
   });
-  Future<void> deleteConversation({required String token, required String conversationId});
+  Future<void> deleteConversation({required String token, required String conversationId, String? sessionToken});
 }
 
 class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
@@ -126,8 +126,12 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
   }
 
   @override
-  Future<void> deleteConversation({required String token, required String conversationId}) async {
-    final url = Uri.parse('$_baseUrl/conversation/$conversationId');
+  Future<void> deleteConversation({required String token, required String conversationId, String? sessionToken}) async {
+    // Si sessionToken está presente, usarlo como query param para eliminar una conversación anónima
+    final path = (sessionToken != null && sessionToken.isNotEmpty)
+        ? '$_baseUrl/conversation/$conversationId?session_token=$sessionToken'
+        : '$_baseUrl/conversation/$conversationId';
+    final url = Uri.parse(path);
     final headers = {
       'Content-Type': 'application/json',
     };
