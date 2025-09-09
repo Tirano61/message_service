@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/core/session_manager.dart';
-import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
+// local datasource is now accessed via the MessageBloc/repository
+import 'package:message_service/feactures/message/data/utils/message_display_mapper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MessagePage extends StatefulWidget {
@@ -42,68 +44,27 @@ class _MessagePageState extends State<MessagePage> {
   context.read<MessageBloc>().add(ConnectServerEvent());
   // Start listening for incoming messages (listen once)
   context.read<MessageBloc>().add(LoadMessageEvent());
-  // debug: show which conversation and whether initialMessages were provided
-  try { debugPrint('DBG initState convId=${widget.conversationId} initialMessages=${widget.initialMessages?.length ?? 0}'); } catch (_) {}
     // Inicializar mensajes si vienen como parámetro
     final authState = context.read<AuthBloc>().state;
     if (widget.initialMessages != null && widget.initialMessages!.isNotEmpty) {
       _preserveServerOrder = true;
-       messages.clear();
-          // build stable timestamps for messages: prefer server-created time, otherwise synthesize
-      final nowBase = DateTime.now().toUtc().subtract(Duration(milliseconds: widget.initialMessages!.length + 1));
-      for (var i = 0; i < widget.initialMessages!.length; i++) {
-        final m = widget.initialMessages![i];
-        if (m is Map<String, dynamic>) {
-          // preserve sender and created_at when present (support different payload keys)
-          final sender = (m['sender'] ?? m['from'] ?? m['user_id'] ?? m['userId'] ?? '').toString();
-          final createdRaw = m['created_at'] ?? m['timestamp'] ?? m['time'] ?? m['date'] ?? '';
-          final normalizedMap = Map<String, dynamic>.from(m);
-          normalizedMap['sender'] = sender;
-          String createdIso;
-          if (createdRaw != null && (createdRaw is String || createdRaw is int) && createdRaw.toString().trim().isNotEmpty) {
-            createdIso = _toIsoTimestamp(createdRaw);
-          } else {
-            // synthesize a monotonic timestamp based on list position so ordering is stable
-            createdIso = nowBase.add(Duration(milliseconds: i)).toIso8601String();
-          }
-          normalizedMap['created_at'] = createdIso;
-          final isMeVal = _isMine(normalizedMap, authState);
-          messages.add({'text': m['content'] ?? m['message'] ?? '', 'sender': sender, 'created_at': createdIso, 'timestamp': createdIso, 'isMe': isMeVal, 'seq': _seqCounter++, 'source': 'initial'});
-        }
+      messages.clear();
+      final currentUserId = (authState is AuthAuthenticatedState) ? authState.user.id.toString() : null;
+      final prepared = prepareDisplayMessages(widget.initialMessages!, currentUserId: currentUserId, source: 'initial');
+      for (final m in prepared) {
+        messages.add({...m, 'seq': _seqCounter++, 'source': m['source'] ?? 'initial'});
       }
-  // Scroll to last after initial population
+      // Scroll to last after initial population
       setState(() { _normalizeAndSortMessages(); });
-        WidgetsBinding.instance.addPostFrameCallback((_) { 
-        _scrollToEnd();
-      });
-    // debug dump
-    _debugDump('initial');
-    } else {
-      // si no vinieron mensajes como parámetro, intentar cargar desde DB local
+      WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
+
+      } else {
+      // si no vinieron mensajes como parámetro, pedir la lista al BLoC (repositorio)
       final convId = widget.conversationId.isNotEmpty ? widget.conversationId : SessionManager().conversationId;
       if (convId != null && convId.isNotEmpty) {
-        try {
-          final localDs = LocalMessageDataSource();
-          localDs.getMessages(convId).then((list) {
-            if (list.isNotEmpty) {
-                setState(() {
-                  messages.clear();
-                  for (final m in list) {
-                    // preserve created_at/timestamp from DB so ordering is correct
-                    final ts = m.created_at.toIso8601String();
-                    messages.add({'text': m.content, 'isMe': (m.sender == (authState is AuthAuthenticatedState ? authState.user.id : null)), 'timestamp': ts, 'created_at': ts, 'sender': m.sender, 'local': false, 'seq': _seqCounter++, 'source': 'db'});
-                  }
-                });
-                // Normalize, sort and scroll after rendering
-                setState(() { _normalizeAndSortMessages(); });
-              WidgetsBinding.instance.addPostFrameCallback((_) { 
-                _scrollToEnd();
-              });
-              // debug dump
-              _debugDump('db_loaded');
-            }
-          });
-        } catch (_) {}
+        // pasar token si está disponible; el repositorio decidirá usar remoto o local
+        final token = SessionManager().sessionToken;
+        context.read<MessageBloc>().add(LoadMessagesListEvent(conversationId: convId, token: token));
       }
     }
     // Merge temporales almacenados en SessionManager
@@ -140,7 +101,6 @@ class _MessagePageState extends State<MessagePage> {
   // merged temporals (debug prints removed)
     // Scroll after merging temporals
   WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
-    _debugDump('merged_session');
     if (authState is AuthAuthenticatedState) {
       return sender == authState.user.id || sender == authState.user.role;
     }
@@ -200,25 +160,6 @@ class _MessagePageState extends State<MessagePage> {
   return '$h:$m:$s';
     } catch (_) {
       return '';
-    }
-  }
-
-  void _debugDump(String tag) {
-    try {
-      final sample = messages.take(12).map((m) {
-        final tsRaw = (m['timestamp'] ?? m['created_at'] ?? '').toString();
-        final parsed = DateTime.tryParse(tsRaw);
-        final ts = parsed != null ? parsed.toUtc().toIso8601String() : 'INVALID';
-        final src = (m['source'] ?? 'unknown').toString();
-        final seq = (m['seq'] ?? 0).toString();
-        final isMe = (m['isMe'] ?? false).toString();
-        final text = (m['text'] ?? '').toString();
-        final short = text.length > 24 ? text.substring(0, 24) + '...' : text;
-        return '{seq:$seq src:$src isMe:$isMe ts:$ts text:"$short"}';
-      }).join('\n');
-      debugPrint('DBG DUMP $tag count=${messages.length}\n$sample');
-    } catch (_) {
-      try { debugPrint('DBG DUMP $tag failed to dump messages'); } catch (_) {}
     }
   }
 
@@ -294,11 +235,28 @@ class _MessagePageState extends State<MessagePage> {
   messages.add({'text': text, 'isMe': true, 'timestamp': nowTs, 'created_at': nowTs, 'sender': senderId, 'local': true, 'seq': _seqCounter++, 'source': 'local'});
         _normalizeAndSortMessages();
       });
-  _debugDump('local_sent');
+
       _controller.clear();
   // Scroll to the newly added message
   WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
     }
+  }
+
+  void _debugDump(String tag) {
+    try {
+      final sample = messages.take(12).map((m) {
+        final tsRaw = (m['timestamp'] ?? m['created_at'] ?? '').toString();
+        final parsed = DateTime.tryParse(tsRaw);
+        final ts = parsed != null ? parsed.toUtc().toIso8601String() : 'INVALID';
+        final src = (m['source'] ?? 'unknown').toString();
+        final seq = (m['seq'] ?? 0).toString();
+        final isMe = (m['isMe'] ?? false).toString();
+        final text = (m['text'] ?? '').toString();
+        final short = text.length > 24 ? text.substring(0, 24) + '...' : text;
+        return '{seq:$seq src:$src isMe:$isMe ts:$ts text:"$short"}';
+      }).join('\n');
+      debugPrint('DBG DUMP $tag count=${messages.length}\n$sample');
+    } catch (_) {}
   }
 
   @override
@@ -333,42 +291,29 @@ class _MessagePageState extends State<MessagePage> {
       ),
       body: BlocListener<MessageBloc, MessageState>(
         listener: (context, state) {
+          // MessageLoadedState is intentionally light here; the BLoC will emit
+          // MessagesListLoadedState to update the full list (confirmed messages, stop animations).
           if (state is MessageLoadedState) {
-              final msg = state.message;
-              // normalize server timestamp to UTC ISO so comparison is stable
-              final serverTs = _toIsoTimestamp(msg.created_at.toUtc().toIso8601String());
-            final text = msg.content;
-            // Try to find a matching local (optimistic) message and replace it instead of duplicating
-            final matchIndex = messages.indexWhere((m) {
-              final mt = (m['text'] ?? '').toString();
-                final mtsRaw = (m['timestamp'] ?? m['created_at'] ?? '').toString();
-                final mts = mtsRaw.isEmpty ? '' : _toIsoTimestamp(mtsRaw);
-                final isLocal = m['local'] == true;
-                return isLocal && mt == text && (mts.isEmpty || mts == serverTs);
-            });
-            setState(() {
-                if (matchIndex != -1) {
-                // replace local message record with server-acknowledged message
-                messages[matchIndex] = {'text': text, 'isMe': _isMine(msg.toJson(), context.read<AuthBloc>().state), 'timestamp': serverTs, 'created_at': serverTs, 'sender': msg.sender.toString(), 'local': false, 'seq': _seqCounter++, 'source': 'server'};
-              } else {
-                // no local match, add normally
-                final exists = messages.any((m) {
-                  final mtsRaw = (m['timestamp'] ?? m['created_at'] ?? '').toString();
-                  final mts = mtsRaw.isEmpty ? '' : _toIsoTimestamp(mtsRaw);
-                  return m['text'] == text && mts == serverTs;
-                });
-                  if (!exists) {
-                  messages.add({'text': text, 'isMe': _isMine(msg.toJson(), context.read<AuthBloc>().state), 'timestamp': serverTs, 'created_at': serverTs, 'sender': msg.sender.toString(), 'local': false, 'seq': _seqCounter++, 'source': 'server'});
-                }
-              }
-              _normalizeAndSortMessages();
-            });
-            _debugDump('onServerMsg');
-            WidgetsBinding.instance.addPostFrameCallback((_) { 
-              _scrollToEnd();
-            });
-            // Escuchar el siguiente mensaje
+            // no-op: list refresh handled by MessagesListLoadedState
+            // continue listening for next message
             context.read<MessageBloc>().add(LoadMessageEvent());
+          }
+          if (state is MessagesListLoadedState) {
+            try {
+              final list = state.messages;
+              // Always replace the visible list with the repository/bloc-provided list.
+              // This ensures any optimistic local messages are removed when the server
+              // confirms and prevents the waiting animation from sticking around.
+              setState(() {
+                messages.clear();
+                for (final m in list) {
+                  final ts = m.created_at.toIso8601String();
+                  messages.add({'text': m.content, 'isMe': false, 'timestamp': ts, 'created_at': ts, 'sender': m.sender, 'local': false, 'seq': _seqCounter++, 'source': 'repo'});
+                }
+                _normalizeAndSortMessages();
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
+            } catch (_) {}
           }
         },
         child: Column(
@@ -381,43 +326,59 @@ class _MessagePageState extends State<MessagePage> {
                 itemBuilder: (context, index) {
                   final message = messages[index];
                   final isMe = message['isMe'] as bool;
-                  return Align(
-                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                          // usuario = celeste visible, bot = blanco sucio
-                          color: isMe ? const Color(0xFFB3E5FC) : const Color.fromARGB(255, 234, 216, 244),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(16),
-                          topRight: const Radius.circular(16),
-                          bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
-                          bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            message['text'] as String,
-                            style: TextStyle(fontSize: 16, color: isMe ? Colors.black : Colors.black87),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatTime((message['timestamp'] ?? message['created_at'] ?? '').toString()),
-                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 2),
-                          // debug: show source of message (initial/db/session/local/server)
-                          Text(
-                            (message['source'] ?? '').toString(),
-                            style: TextStyle(fontSize: 9, color: Colors.grey[500]),
-                          ),
-                        ],
+                  // Build the message bubble
+                  final bubble = Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isMe ? const Color(0xFFB3E5FC) : const Color.fromARGB(255, 234, 216, 244),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
+                        bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
                       ),
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          message['text'] as String,
+                          style: TextStyle(fontSize: 16, color: isMe ? Colors.black : Colors.black87),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatTime((message['timestamp'] ?? message['created_at'] ?? '').toString()),
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          (message['source'] ?? '').toString(),
+                          style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // Render bubble and, if pending local message, show waiting dots below aligned to same side
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        child: bubble,
+                      ),
+                      if ((message['local'] == true) && SocketService().isConnected())
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(height: 14, child: _WaitingDots()),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
@@ -453,6 +414,52 @@ class _MessagePageState extends State<MessagePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Small animated dots widget shown while message is pending server confirmation
+class _WaitingDots extends StatefulWidget {
+  const _WaitingDots({Key? key}) : super(key: key);
+  @override
+  State<_WaitingDots> createState() => _WaitingDotsState();
+}
+
+class _WaitingDotsState extends State<_WaitingDots> {
+  int _active = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      setState(() {
+        _active = (_active + 1) % 3;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        final visible = i == _active;
+        return AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: visible ? 1.0 : 0.3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
+          ),
+        );
+      }),
     );
   }
 }

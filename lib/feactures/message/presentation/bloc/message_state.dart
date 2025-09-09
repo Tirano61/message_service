@@ -15,6 +15,12 @@ final class MessageLoadedState extends MessageState {
   MessageLoadedState(this.message);
 }
 
+final class MessagesListLoadedState extends MessageState {
+  final List<MessageEntity> messages;
+
+  MessagesListLoadedState(this.messages);
+}
+
 final class MessageErrorState extends MessageState {
   final String error;
 
