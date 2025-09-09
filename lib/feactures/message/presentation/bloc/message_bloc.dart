@@ -1,31 +1,55 @@
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
-import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
+import 'package:message_service/feactures/message/domain/repository/message_repository.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 import 'package:uuid/uuid.dart';
+import 'package:message_service/core/session_manager.dart';
 
 part 'message_event.dart';
 part 'message_state.dart';
 
 class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
-  final MessageDataSource messageDataSource;
+  final MessageRepository messageRepository;
   final UserEntity userEntity;
-  MessageBloc({required this.messageDataSource, required this.userEntity}) : super(MessageInitialState()) {
+  MessageBloc({required this.messageRepository, required this.userEntity}) : super(MessageInitialState()) {
     on<ConnectServerEvent>((event, emit) {
       try {
-        messageDataSource.connectToServer(event.token);
+        messageRepository.connectToServer(event.token);
         emit(ServerConnectedState());
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
     });
-    on<LoadMessageEvent>((event, emit)async {
+    on<LoadMessageEvent>((event, emit) async {
       emit(MessageLoadingState());
       try {
-  final msg = await messageDataSource.getMessage();
-  emit(MessageLoadedState(msg));
+        // receive a single message from socket
+        final msg = await messageRepository.getMessage();
+        emit(MessageLoadedState(msg));
+
+        // refresh full conversation list so UI can render confirmed messages and stop animations
+        String? convId = event.conversationId ?? SessionManager().conversationId;
+        final token = event.token ?? SessionManager().sessionToken;
+        if (convId != null && convId.isNotEmpty) {
+          try {
+            final list = await messageRepository.getListMessages(conversationId: convId, token: token);
+            emit(MessagesListLoadedState(list));
+          } catch (_) {
+            // ignore list refresh errors here
+          }
+        }
+      } catch (e) {
+        emit(MessageErrorState(e.toString()));
+      }
+    });
+
+    on<LoadMessagesListEvent>((event, emit) async {
+      emit(MessageLoadingState());
+      try {
+        final list = await messageRepository.getListMessages(conversationId: event.conversationId, token: event.token);
+        emit(MessagesListLoadedState(list));
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
@@ -50,7 +74,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
             sender: senderId, // use provided senderId or user id or session token
           created_at: DateTime.now().toUtc(),
         );
-        await messageDataSource.sendMessage(messageEntity);
+  await messageRepository.sendMessage(messageEntity);
         // Optionally emit a local state if needed
       } catch (e) {
         emit(MessageErrorState(e.toString()));

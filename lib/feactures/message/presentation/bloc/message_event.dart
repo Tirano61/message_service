@@ -8,7 +8,17 @@ class ConnectServerEvent extends MessageEvent {
   ConnectServerEvent({this.token = ''});
 }
 
-class LoadMessageEvent extends MessageEvent {}
+class LoadMessageEvent extends MessageEvent {
+  final String? conversationId;
+  final String? token;
+  LoadMessageEvent({this.conversationId, this.token});
+}
+
+class LoadMessagesListEvent extends MessageEvent {
+  final String conversationId;
+  final String? token;
+  LoadMessagesListEvent({required this.conversationId, this.token});
+}
 
 class SendMessageEvent extends MessageEvent {
   final String message;

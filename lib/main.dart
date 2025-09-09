@@ -12,6 +12,8 @@ import 'package:message_service/feactures/conversation/data/datasource/conversat
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
+import 'package:message_service/feactures/message/data/repository_impl/message_repository_impl.dart';
+import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
 
 
 
@@ -40,8 +42,12 @@ class MyApp extends StatelessWidget {
         }),
         BlocProvider<MessageBloc>(
           create: (_) {
+            // Construct repository with local + remote datasources
+            final dataSource = MessageDataSourceImpl(socketService: SocketService());
+            final remote = MessageRemoteDataSourceImpl();
+            final repo = MessageRepositoryImpl(dataSource, remoteDataSource: remote);
             return MessageBloc(
-              messageDataSource: MessageDataSourceImpl(socketService: SocketService()),
+              messageRepository: repo,
               userEntity: UserEntity(id: '', email: '', token: '', fullName: '', role: 'user')
             );
           }

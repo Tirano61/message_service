@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.message_service"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Use the highest required NDK version to satisfy native dependencies (sqflite_android requires 27)
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
