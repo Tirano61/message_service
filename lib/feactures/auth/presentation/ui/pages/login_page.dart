@@ -16,12 +16,10 @@ class Login extends StatelessWidget {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticatedState) {
-            //state.user.saveUser();
+            // After login, go to the Conversation selection page (cards)
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (_) => const ConversationPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const ConversationPage()),
             );
           }
         },
@@ -74,7 +72,7 @@ class Login extends StatelessWidget {
                         // Directly navigate to the anonymous conversations list.
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (_) => const ConversationListPage(type: 'anonymous')),
+                          MaterialPageRoute(builder: (_) => const ConversationPage()),
                         );
                       },
                       child: const Text('Entrar como invitado'),

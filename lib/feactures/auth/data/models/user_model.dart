@@ -14,13 +14,27 @@ class UserModel extends UserEntity{
 
   // Convierte un mapa a una instancia de UserModel
   factory UserModel.fromJson(json){
+    // El servidor devuelve siempre `roles` como array. Extraemos y normalizamos
+    const allowed = ['sales', 'tecnico', 'user'];
+    String roleValue = 'user';
+
+    final dynamic rolesField = json != null ? json['roles'] : null;
+    if (rolesField is List) {
+      final extracted = rolesField
+          .map((e) => e.toString().toLowerCase().trim())
+          .where((r) => allowed.contains(r))
+          .toList();
+      if (extracted.isNotEmpty) {
+        roleValue = extracted.join(',');
+      }
+    }
+
     return UserModel(
       id      : json['id'],
       fullName: json['fullName'],
       email   : json['email'],
       token   : json['token'],
-      role    : json['role'] ?? 'user',
-// Maneja el caso de imageUrl nulo
+      role    : roleValue,
     );
   }
   // Convierte una instancia de UserModel a un mapa
