@@ -9,11 +9,13 @@ class CreateConversationEvent extends ConversationEvent {
 	final String token;
 	final String userId;
 	final String title;
+	final String? type; // optional: 'user' | 'tecnico' | 'sales' | 'anonymous'
 
 	CreateConversationEvent({
 		required this.token,
 		required this.userId,
 		required this.title,
+		this.type,
 	});
 }
 

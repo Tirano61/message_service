@@ -6,9 +6,10 @@ import 'package:message_service/feactures/conversation/domain/entities/conversti
 
 abstract class ConversationRemoteDataSource {
   Future<ConversationEntity> createConversation({
-    required String token,
-    required String userId,
-    required String title,
+  required String token,
+  required String userId,
+  required String title,
+  String? type,
   });
   Future<List<ConversationEntity>> getConversations({
     required String token,
@@ -32,8 +33,24 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     required String token,
     required String userId,
     required String title,
+    String? type,
   }) async {
-    final url = Uri.parse('$_baseUrl/conversation/create');
+    // Choose exact backend endpoints for role-specific creation
+    String path;
+    if (type != null && type.isNotEmpty) {
+      final t = type.toLowerCase();
+      if (t == 'tecnico' || t == 'technical') {
+        path = '$_baseUrl/conversation/create-tecnico';
+      } else if (t == 'sales' || t == 'seller' || t == 'vendedor') {
+        path = '$_baseUrl/conversation/create-sales';
+      } else {
+        // unknown type: fallback to default create
+        path = '$_baseUrl/conversation/create';
+      }
+    } else {
+      path = '$_baseUrl/conversation/create';
+    }
+    final url = Uri.parse(path);
     final headers = {
       'Content-Type': 'application/json',
     };

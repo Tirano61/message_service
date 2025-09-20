@@ -51,6 +51,7 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
         token: event.token,
         userId: event.userId,
         title: event.title,
+        type: (event as dynamic).type,
       );
 
       // If backend returned a session token (conversación anónima), store and connect
@@ -66,11 +67,11 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
 
       if (previous is ConversationLoadedState) {
         final updated = List<ConversationEntity>.from(previous.conversations)..insert(0, newConv);
-  emit(ConversationLoadedState(conversations: updated));
-  emit(ConversationCreatedState(conversation: newConv));
+        emit(ConversationLoadedState(conversations: updated));
+        emit(ConversationCreatedState(conversation: newConv));
       } else {
-  emit(ConversationLoadedState(conversations: [newConv]));
-  emit(ConversationCreatedState(conversation: newConv));
+        emit(ConversationLoadedState(conversations: [newConv]));
+        emit(ConversationCreatedState(conversation: newConv));
       }
     } catch (e) {
       emit(ConversationErrorState(message: e.toString()));

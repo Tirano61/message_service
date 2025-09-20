@@ -1,60 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
-import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
-import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
-import 'package:message_service/core/session_manager.dart';
-import 'package:message_service/core/services/socket_service.dart';
-import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
-import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
-import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
+import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
 
-// Página menú según rol
+// Página menú según rol (minimal y estable)
 class ConversationPage extends StatelessWidget {
   const ConversationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    String role = 'user';
-    if (authState is AuthAuthenticatedState) {
-      role = authState.user.role;
+
+    // TODO(debug): temporal - imprimir role del usuario para depuración
+    try {
+      if (authState is AuthAuthenticatedState) {
+        // imprimir solo en modo debug para no saturar logs en release
+        // ignore: avoid_print
+        print('[DEBUG] ConversationPage auth user role: "${authState.user.role}"');
+      } else {
+        // ignore: avoid_print
+        print('[DEBUG] ConversationPage auth state: ${authState.runtimeType}');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('[DEBUG] ConversationPage error al leer authState: $e');
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Conversaciones')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _RoleCard(
-              title: 'Conversaciones usuario',
-              icon: Icons.chat_bubble_outline,
-              color: Colors.blue,
-              onTap: () => _openList(context, 'user'),
-            ),
-            if (role.toLowerCase() == 'tecnico') ...[
-              const SizedBox(height: 16),
+    // Usuario no autenticado: solo tarjeta anonymous
+    if (authState is! AuthAuthenticatedState) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Conversaciones')),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               _RoleCard(
-                title: 'Conversaciones técnico',
-                icon: Icons.build_outlined,
-                color: Colors.deepPurple,
-                onTap: () => _openList(context, 'tecnico'),
+                title: 'Conversaciones anónimas',
+                icon: Icons.person_outline,
+                color: Colors.grey,
+                onTap: () => _openList(context, 'anonymous'),
               ),
             ],
-          ],
+          ),
         ),
-      ),
+      );
+    }
+
+  // Usuario autenticado: mostrar tarjetas según roles
+  final user = authState.user;
+
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ConversationBloc, ConversationState>(
+          listener: (context, state) {
+            if (state is ConversationErrorState) {
+              final msg = state.message.isNotEmpty ? state.message : 'Error de conexión';
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+            }
+          },
+        ),
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthAuthenticatedState) {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
+            }
+          },
+        ),
+      ],
+      child: Builder(builder: (context) {
+        // Sólo leer LO NECESARIO del AuthBloc: evita rebuilds por cambios irrelevantes
+        final String? role = context.select<AuthBloc, String?>((bloc) {
+          final s = bloc.state;
+          return s is AuthAuthenticatedState ? s.user.role : null;
+        });
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('Conversaciones')),
+          body: Column(
+            children: [
+              // UI condicional por role (reconstruye solo si cambia role)
+              if (role != null && role.contains('sales')) ...[
+                _RoleCard(
+                  title: 'Conversaciones vendedores',
+                  icon: Icons.storefront_outlined,
+                  color: Colors.orange,
+                  onTap: () => _openList(context, 'sales'),
+                ),
+                const SizedBox(height: 16),
+              ],
+              // Parte que depende del ConversationBloc: usar BlocBuilder
+              Expanded(
+                child: BlocBuilder<ConversationBloc, ConversationState>(
+                  builder: (context, convState) {
+                    if (convState is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
+                    if (convState is ConversationLoadedState) return ListView(/*...*/);
+                    if (convState is ConversationErrorState) return Center(child: Text('Error: ${convState.message}'));
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
   void _openList(BuildContext context, String type) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ConversationListPage(type: type)),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ConversationListPage(type: type)));
   }
 }
 
@@ -63,230 +120,38 @@ class _RoleCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _RoleCard({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const _RoleCard({required this.title, required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+      child: ListTile(
+        leading: CircleAvatar(backgroundColor: color.withOpacity(0.12), child: Icon(icon, color: color)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withOpacity(0.15),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        ),
       ),
     );
   }
 }
 
-// Página que lista conversaciones (placeholder usando el Bloc existente)
-class ConversationListPage extends StatefulWidget {
-  final String type; // 'user' o 'tecnico'
+class ConversationListPage extends StatelessWidget {
+  final String type;
   const ConversationListPage({super.key, required this.type});
-
-  @override
-  State<ConversationListPage> createState() => _ConversationListPageState();
-}
-
-class _ConversationListPageState extends State<ConversationListPage> {
-  @override
-  void initState() {
-    super.initState();
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthAuthenticatedState) {
-      context.read<ConversationBloc>().add(LoadConversationsEvent(token: authState.user.token, type: widget.type));
-    } else {
-      // anonymous: load public/anonymous conversations (backend should support type='anonymous')
-      context.read<ConversationBloc>().add(LoadConversationsEvent(token: '', type: 'anonymous'));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  appBar: AppBar(title: Text('Lista de ${widget.type}')),
-      body: BlocListener<ConversationBloc, ConversationState>(
-        listener: (context, state) {
-          if (state is ConversationCreatedState) {
-            // navigate to message page for the created conversation (push so user can go back)
-            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: state.conversation.id, title: state.conversation.title ?? 'Conversación', initialMessages: state.conversation.messages?.map((m) => m.toJson()).toList())));
-          }
-        },
-        child: BlocBuilder<ConversationBloc, ConversationState>(
-          builder: (context, state) {
-          if (state is ConversationLoadingState) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is ConversationLoadedState) {
-            final List<ConversationEntity> conversations = state.conversations;
-            if (conversations.isEmpty) {
-              return const Center(child: Text('No hay conversaciones.'));
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: conversations.length,
-              itemBuilder: (context, index) {
-                final conversation = conversations[index];
-                final displayTitle = conversation.title ?? 'Sin título';
-                final created = conversation.createdAt;
-                final dateText = created != null ?
-                  '${created.toLocal().day}/${created.toLocal().month}/${created.toLocal().year} ${created.toLocal().hour}:${created.toLocal().minute.toString().padLeft(2,'0')}'
-                  : '';
-
-                return Dismissible(
-                  key: Key(conversation.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    color: Colors.red,
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) {
-                    // Dispatch delete event to bloc (incluir token si el usuario está autenticado)
-                    final authState = context.read<AuthBloc>().state;
-                    final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
-                    context.read<ConversationBloc>().add(DeleteConversationEvent(conversationId: conversation.id, token: token, sessionToken: conversation.sessionToken));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conversación eliminada')));
-                  },
-                  child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      // Mostrar la fecha arriba y el título debajo
-                      title: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            dateText,
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            displayTitle,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      onTap: () async {
-                        // If conversation has sessionToken, store it so MessageDataSource will use it
-                        if (conversation.sessionToken != null && conversation.sessionToken!.isNotEmpty) {
-                          SessionManager().sessionToken = conversation.sessionToken;
-                          SessionManager().conversationId = conversation.id;
-                          // Ensure socket connects using anonymous session
-                          try {
-                            SocketService().connect(token: '');
-                          } catch (_) {}
-                        }
-
-                        final convId = conversation.id;
-                        final localDs = LocalMessageDataSource();
-
-                        // 1) Intentar obtener mensajes desde DB local
-                        try {
-                          final localList = await localDs.getMessages(convId);
-                          if (localList.isNotEmpty) {
-                            final serializedLocal = localList.map((m) => m.toJson()).toList();
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serializedLocal)));
-                            return;
-                          }
-                        } catch (_) {
-                          // ignore and try other sources
-                        }
-
-                        // 2) Si no hay local en DB, comprobar SessionManager temporal y migrar a DB si existe
-                        try {
-                          final temp = SessionManager().messagesByConversation[convId];
-                          if (temp != null && temp.isNotEmpty) {
-                            for (final m in temp) {
-                              final content = m['text']?.toString() ?? '';
-                              final sender = m['sender']?.toString() ?? '';
-                              final createdRaw = m['created_at']?.toString() ?? '';
-                              DateTime createdAt;
-                              try {
-                                createdAt = DateTime.parse(createdRaw).toUtc();
-                              } catch (_) {
-                                createdAt = DateTime.now().toUtc();
-                              }
-                              final entity = MessageEntity(id: UniqueKey().toString(), content: content, sender: sender, created_at: createdAt);
-                              try {
-                                await localDs.insertMessage(convId, entity);
-                              } catch (_) {}
-                            }
-                            final migrated = await localDs.getMessages(convId);
-                            final serializedLocal = migrated.map((m) => m.toJson()).toList();
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serializedLocal)));
-                            return;
-                          }
-                        } catch (_) {
-                          // ignore
-                        }
-
-                        // 3) Si no hay datos locales, pedir historial al servidor y persistirlo
-                        try {
-                          final remote = MessageRemoteDataSourceImpl();
-                          final authState = context.read<AuthBloc>().state;
-                          final token = (authState is AuthAuthenticatedState) ? authState.user.token : '';
-                          final msgs = await remote.getMessages(token: token, conversationId: convId);
-                          final serialized = msgs.map((m) => m.toJson()).toList();
-                          // Guardar temporal y persistir en DB
-                          try {
-                            SessionManager().messagesByConversation[convId] = serialized.map((e) => {'text': e['content'] ?? e['message'] ?? '', 'sender': e['sender'] ?? '', 'created_at': e['created_at'] ?? ''}).toList();
-                          } catch (_) {}
-                          try {
-                            for (final m in msgs) {
-                              await localDs.insertMessage(convId, m);
-                            }
-                          } catch (_) {}
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: serialized)));
-                          return;
-                        } catch (_) {
-                          // Si falla la petición remota, abrir con lo que haya en la entidad conversation
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => MessagePage(conversationId: convId, title: conversation.title ?? 'Conversación', initialMessages: conversation.messages?.map((m) => m.toJson()).toList())));
-                          return;
-                        }
-                      },
-                    ),
-                  ),
-                );
-              },
-            );
-          } else if (state is ConversationErrorState) {
-            return Center(child: Text('Error: ${state.message}'));
-          }
-          return const SizedBox.shrink();
-          },
-        ),
-      ),
-    floatingActionButton: _NewConversationFab(type: widget.type),
+      appBar: AppBar(title: Text('Lista de $type')),
+      body: Center(child: Text('Aquí iría la lista de conversaciones de tipo "$type"')),
+      floatingActionButton: _NewConversationFab(type: type),
     );
   }
 }
 
+// FAB compacto con validación de roles antes de crear conversación
 class _NewConversationFab extends StatelessWidget {
   final String type;
   const _NewConversationFab({required this.type});
@@ -302,40 +167,41 @@ class _NewConversationFab extends StatelessWidget {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Nueva conversación'),
-            content: TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            content: TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Título')),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, titleController.text.trim()),
-                child: const Text('Crear'),
-              ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              ElevatedButton(onPressed: () => Navigator.pop(ctx, titleController.text.trim()), child: const Text('Crear')),
             ],
           ),
         );
 
-        if (result != null && result.isNotEmpty) {
-          final authState = context.read<AuthBloc>().state;
-          if (authState is AuthAuthenticatedState) {
-            final token = authState.user.token;
-            final userId = authState.user.id;
-            context.read<ConversationBloc>().add(
-              CreateConversationEvent(token: token, userId: userId, title: result),
-            );
-          } else {
-            // anonymous creation: pass empty token/userId; server will create an anonymous conversation and return session_token
-            context.read<ConversationBloc>().add(
-              CreateConversationEvent(token: '', userId: '', title: result),
-            );
+        if (result == null || result.isEmpty) return;
+
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticatedState) {
+          final user = authState.user;
+          if (type != 'anonymous' && !user.hasRole(type)) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No tienes permisos para crear conversaciones de tipo "$type".')));
+            return;
           }
+          context.read<ConversationBloc>().add(CreateConversationEvent(token: user.token, userId: user.id, title: result, type: type));
+        } else {
+          if (type != 'anonymous') {
+            final goLogin = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Acceso restringido'),
+                content: const Text('Debes iniciar sesión para crear o ver este tipo de conversaciones. ¿Ir al login?'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                  ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ir al login')),
+                ],
+              ),
+            );
+            if (goLogin == true) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
+            return;
+          }
+          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: result, type: 'anonymous'));
         }
       },
     );
