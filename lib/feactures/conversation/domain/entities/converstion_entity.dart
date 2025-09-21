@@ -7,6 +7,7 @@ class ConversationEntity {
   final List<MessageEntity>? messages;
   final String? userId;
   final String? sessionToken;
+  final String? type;
   final DateTime? createdAt; // token para sesiones anónimas
   final DateTime? updatedAt; // token para sesiones anónimas
 
@@ -16,6 +17,7 @@ class ConversationEntity {
     required this.messages,
     required this.userId,
     this.sessionToken,
+    this.type,
     this.createdAt,
     this.updatedAt,
   });

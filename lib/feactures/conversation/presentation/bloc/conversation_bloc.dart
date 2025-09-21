@@ -1,5 +1,5 @@
 import 'package:bloc/bloc.dart';
-import 'package:message_service/feactures/conversation/data/datasource/conversation_remote_datasource.dart';
+import 'package:message_service/feactures/conversation/domain/repository/conversation_reository.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:meta/meta.dart';
 import 'package:message_service/core/session_manager.dart';
@@ -10,9 +10,9 @@ part 'conversation_event.dart';
 part 'conversation_state.dart';
 
 class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
-  final ConversationRemoteDataSource conversationDataSource;
+  final ConversationRepository conversationRepository;
 
-  ConversationBloc({required this.conversationDataSource}) : super(ConversationInitial()) {
+  ConversationBloc({required this.conversationRepository}) : super(ConversationInitial()) {
     on<CreateConversationEvent>(_onCreateConversation);
     on<LoadConversationsEvent>(_onLoadConversations);
     on<DeleteConversationEvent>(_onDeleteConversation);
@@ -36,7 +36,8 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
       } catch (_) {}
       // Intentar borrar en servidor; si falla, reportar el error pero no hacer rollback local
       try {
-        await conversationDataSource.deleteConversation(token: e.token, conversationId: id, sessionToken: e.sessionToken);
+  // repository.deleteConversation should remove remotely and we also remove local state above
+  await conversationRepository.deleteConversation(id);
       } catch (err) {
         emit(ConversationErrorState(message: 'Error al eliminar en servidor: ${err.toString()}'));
       }
@@ -47,12 +48,7 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     final previous = state;
     emit(ConversationLoadingState());
     try {
-      final newConv = await conversationDataSource.createConversation(
-        token: event.token,
-        userId: event.userId,
-        title: event.title,
-        type: (event as dynamic).type,
-      );
+  final newConv = await conversationRepository.createConversation(event.userId ?? '', event.title, event.token, event.type);
 
       // If backend returned a session token (conversación anónima), store and connect
       // Only store session_token when the creation was anonymous (no userId provided)
@@ -83,12 +79,14 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     try {
       List<ConversationEntity> list;
       if (event.type != null && event.type!.isNotEmpty) {
-        list = await conversationDataSource.getConversations(token: event.token, type: event.type);
+        // Pedir al repositorio conversaciones locales filtrando por tipo
+        list = await conversationRepository.getConversations(type: event.type);
       } else if ((event as dynamic).userId != null) {
-        // fallback to getAllConversations if userId provided
-        list = await conversationDataSource.getAllConversations(token: event.token, userId: (event as dynamic).userId);
+        // fallback: fetch remote and sync local via repository
+        final conv = await conversationRepository.getAllConversations(event.token, (event as dynamic).userId);
+        list = [conv];
       } else {
-        list = await conversationDataSource.getConversations(token: event.token);
+        list = await conversationRepository.getConversations();
       }
       emit(ConversationLoadedState(conversations: list));
     } catch (e) {

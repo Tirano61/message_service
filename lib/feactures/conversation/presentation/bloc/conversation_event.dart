@@ -15,7 +15,7 @@ class CreateConversationEvent extends ConversationEvent {
 		required this.token,
 		required this.userId,
 		required this.title,
-		this.type,
+		required this.type,
 	});
 }
 

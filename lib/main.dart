@@ -10,6 +10,7 @@ import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart'
 import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
 import 'package:message_service/feactures/conversation/data/datasource/conversation_remote_datasource.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
+import 'package:message_service/feactures/conversation/data/repository_impl/conversation_repository_impl.dart';
 import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/message/data/repository_impl/message_repository_impl.dart';
@@ -54,9 +55,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<ConversationBloc>(
           create: (_) {
-            return ConversationBloc(
-              conversationDataSource: ConversationRemoteDataSourceImpl(),
-            );
+            final remote = ConversationRemoteDataSourceImpl();
+            final repo = ConversationRepositoryImpl(remoteDataSource: remote);
+            return ConversationBloc(conversationRepository: repo);
           }
         ),
       ],

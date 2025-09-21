@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
+import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 
 // Página menú según rol (minimal y estable)
 class ConversationPage extends StatelessWidget {
@@ -49,7 +51,7 @@ class ConversationPage extends StatelessWidget {
                 title: 'Conversaciones anónimas',
                 icon: Icons.person_outline,
                 color: Colors.grey,
-                onTap: () => _openList(context, 'anonymous'),
+                onTap: () => _openList(context, 'anonimo'),
               ),
             ],
           ),
@@ -159,16 +161,80 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-class ConversationListPage extends StatelessWidget {
+class ConversationListPage extends StatefulWidget {
   final String type;
   const ConversationListPage({super.key, required this.type});
 
   @override
+  State<ConversationListPage> createState() => _ConversationListPageState();
+}
+
+class _ConversationListPageState extends State<ConversationListPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Cargar conversaciones del tipo solicitado después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final token = SessionManager().sessionToken ?? '';
+      context.read<ConversationBloc>().add(LoadConversationsEvent(token: token, type: widget.type));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Detectar si el usuario está autenticado para mostrar botón de login en anónimos
+    final authState = context.read<AuthBloc>().state;
+    final bool isAuthenticated = authState is AuthAuthenticatedState;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Lista de $type')),
-      body: Center(child: Text('Aquí iría la lista de conversaciones de tipo "$type"')),
-      floatingActionButton: _NewConversationFab(type: type),
+      appBar: AppBar(
+        title: Text('Lista de ${widget.type}'),
+        actions: [
+          // Si es lista anónima y no está autenticado, mostrar botón para ir al login
+          if ((widget.type == 'anonymous' || widget.type == 'anonimo') && !isAuthenticated)
+            TextButton(
+              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login())),
+              child: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)),
+            ),
+        ],
+      ),
+      body: BlocBuilder<ConversationBloc, ConversationState>(
+        builder: (context, state) {
+          if (state is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
+          if (state is ConversationLoadedState) {
+            final convs = state.conversations;
+            if (convs.isEmpty) return Center(child: Text('No hay conversaciones de tipo "${widget.type}"'));
+            return ListView.builder(
+              itemCount: convs.length,
+              itemBuilder: (ctx, i) {
+                final c = convs[i];
+                return ListTile(
+                  title: Text(c.title ?? '(sin título)'),
+                  subtitle: Text(c.id),
+                  onTap: () {
+                    try {
+                      Navigator.push(
+                        ctx,
+                        MaterialPageRoute(
+                          builder: (_) => MessagePage(conversationId: c.id, title: c.title ?? 'Chat'),
+                        ),
+                      );
+                    } catch (e) {
+                      // Mostrar snackbar con detalle para ayudar a depurar en tiempo de ejecución
+                      try {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error al abrir chat: ${e.toString()}')));
+                      } catch (_) {}
+                    }
+                  },
+                );
+              },
+            );
+          }
+          if (state is ConversationErrorState) return Center(child: Text('Error: ${state.message}'));
+          return const SizedBox.shrink();
+        },
+      ),
+      floatingActionButton: _NewConversationFab(type: widget.type),
     );
   }
 }
@@ -202,7 +268,7 @@ class _NewConversationFab extends StatelessWidget {
         final authState = context.read<AuthBloc>().state;
         if (authState is AuthAuthenticatedState) {
           final user = authState.user;
-          if (type != 'anonymous' && !user.hasRole(type)) {
+          if (type != 'anonimo' && !user.hasRole(type)) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No tienes permisos para crear conversaciones de tipo "$type".')));
             return;
           }
@@ -223,7 +289,7 @@ class _NewConversationFab extends StatelessWidget {
             if (goLogin == true) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
             return;
           }
-          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: result, type: 'anonymous'));
+          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: result, type: 'anonimo'));
         }
       },
     );

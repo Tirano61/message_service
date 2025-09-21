@@ -3,8 +3,10 @@
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 
 abstract class ConversationRepository {
-  Future<ConversationEntity> createConversation(String userId, String title, String token);
-  Future<List<ConversationEntity>> getConversations();
+  /// Crea una conversación. `type` es opcional y puede ser 'anonymous', 'sales' o 'tecnico'
+  /// En la capa remota se mapeará a los tokens esperados por el backend (por ejemplo 'anonimo').
+  Future<ConversationEntity> createConversation(String userId, String title, String token, String type );
+  Future<List<ConversationEntity>> getConversations({String? type});
   Future<void> deleteConversation(String conversationId);
   Future<void> updateConversation(String conversationId, String title, String description);
   Future<String> getConversation(String conversationId);  

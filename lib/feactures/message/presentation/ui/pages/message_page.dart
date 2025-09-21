@@ -41,9 +41,10 @@ class _MessagePageState extends State<MessagePage> {
   void initState() {  
     super.initState();
   _scrollController = ScrollController();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
   context.read<MessageBloc>().add(ConnectServerEvent());
-  // Start listening for incoming messages (listen once)
   context.read<MessageBloc>().add(LoadMessageEvent());
+});
     // Inicializar mensajes si vienen como parámetro
     final authState = context.read<AuthBloc>().state;
     if (widget.initialMessages != null && widget.initialMessages!.isNotEmpty) {
@@ -96,16 +97,7 @@ class _MessagePageState extends State<MessagePage> {
     // Aquí podrías inicializar la conexión al servidor o cualquier otra configuración necesaria.
   }
 
-  bool _isMine(Map<String, dynamic> m, dynamic authState) {
-    final sender = m['sender']?.toString() ?? '';
-  // merged temporals (debug prints removed)
-    // Scroll after merging temporals
-  WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
-    if (authState is AuthAuthenticatedState) {
-      return sender == authState.user.id || sender == authState.user.role;
-    }
-    return false;
-  }
+  // _isMine removed: message ownership is determined inline where needed.
 
   String _toIsoTimestamp(dynamic raw) {
     if (raw == null) return DateTime.now().toUtc().toIso8601String();
@@ -220,7 +212,7 @@ class _MessagePageState extends State<MessagePage> {
 
   void _sendMessage() {
     final text = _controller.text.trim();
-  if (text.isNotEmpty) {
+    if (text.isNotEmpty) {
       setState(() {
         final authStateNow = context.read<AuthBloc>().state;
         final senderId = (authStateNow is AuthAuthenticatedState) ? authStateNow.user.id.toString() : 'local';
@@ -231,33 +223,18 @@ class _MessagePageState extends State<MessagePage> {
           final t = DateTime.tryParse((m['timestamp'] ?? m['created_at'] ?? '').toString());
           if (t != null && t.isAfter(maxTs)) maxTs = t;
         }
-  final nowTs = maxTs.add(const Duration(milliseconds: 1)).toIso8601String();
-  messages.add({'text': text, 'isMe': true, 'timestamp': nowTs, 'created_at': nowTs, 'sender': senderId, 'local': true, 'seq': _seqCounter++, 'source': 'local'});
+        final nowTs = maxTs.add(const Duration(milliseconds: 1)).toIso8601String();
+        messages.add({'text': text, 'isMe': true, 'timestamp': nowTs, 'created_at': nowTs, 'sender': senderId, 'local': true, 'seq': _seqCounter++, 'source': 'local'});
         _normalizeAndSortMessages();
       });
 
       _controller.clear();
-  // Scroll to the newly added message
-  WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
+      // Scroll to the newly added message
+      WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
     }
   }
 
-  void _debugDump(String tag) {
-    try {
-      final sample = messages.take(12).map((m) {
-        final tsRaw = (m['timestamp'] ?? m['created_at'] ?? '').toString();
-        final parsed = DateTime.tryParse(tsRaw);
-        final ts = parsed != null ? parsed.toUtc().toIso8601String() : 'INVALID';
-        final src = (m['source'] ?? 'unknown').toString();
-        final seq = (m['seq'] ?? 0).toString();
-        final isMe = (m['isMe'] ?? false).toString();
-        final text = (m['text'] ?? '').toString();
-        final short = text.length > 24 ? text.substring(0, 24) + '...' : text;
-        return '{seq:$seq src:$src isMe:$isMe ts:$ts text:"$short"}';
-      }).join('\n');
-      debugPrint('DBG DUMP $tag count=${messages.length}\n$sample');
-    } catch (_) {}
-  }
+  // _debugDump removed: kept out of production code. Re-add if needed for debugging.
 
   @override
   Widget build(BuildContext context) {
@@ -314,6 +291,22 @@ class _MessagePageState extends State<MessagePage> {
               });
               WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
             } catch (_) {}
+          }
+          // Generic error handling: if the state type name contains 'Error' try to show a message
+          final stName = state.runtimeType.toString().toLowerCase();
+          if (stName.contains('error') || stName.contains('senderror')) {
+            try {
+              final msg = (state as dynamic).message ?? 'Error al enviar mensaje';
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+            } catch (_) {
+              try {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(const SnackBar(content: Text('Error al enviar mensaje'), backgroundColor: Colors.red));
+              } catch (_) {}
+            }
           }
         },
         child: Column(
@@ -391,6 +384,7 @@ class _MessagePageState extends State<MessagePage> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      onSubmitted: (_) => _sendMessage(),
                       decoration: const InputDecoration(
                         hintText: 'Escribe un mensaje...',
                         border: OutlineInputBorder(
