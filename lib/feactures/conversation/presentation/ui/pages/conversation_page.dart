@@ -10,17 +10,26 @@ class ConversationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.watch<AuthBloc>().state;
+    final String? userRole = context.select<AuthBloc, String?>((bloc) {
+      final st = bloc.state;
+      if (st is AuthAuthenticatedState) return st.user.role; // ej "sales,tecnico" o "sales"
+      return null;
+    });
+
+    final bool isAuthenticated = userRole != null;
+    final roles = (userRole ?? '').split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final bool hasSales = roles.contains('sales');
+    final bool hasTecnico = roles.contains('tecnico');
 
     // TODO(debug): temporal - imprimir role del usuario para depuración
     try {
-      if (authState is AuthAuthenticatedState) {
+      if (isAuthenticated) {
         // imprimir solo en modo debug para no saturar logs en release
         // ignore: avoid_print
-        print('[DEBUG] ConversationPage auth user role: "${authState.user.role}"');
+        print('[DEBUG] ConversationPage auth user role: "$userRole"');
       } else {
         // ignore: avoid_print
-        print('[DEBUG] ConversationPage auth state: ${authState.runtimeType}');
+        print('[DEBUG] ConversationPage auth state: ${userRole.runtimeType}');
       }
     } catch (e) {
       // ignore: avoid_print
@@ -28,7 +37,7 @@ class ConversationPage extends StatelessWidget {
     }
 
     // Usuario no autenticado: solo tarjeta anonymous
-    if (authState is! AuthAuthenticatedState) {
+    if (!isAuthenticated) {
       return Scaffold(
         appBar: AppBar(title: const Text('Conversaciones')),
         body: Padding(
@@ -48,8 +57,7 @@ class ConversationPage extends StatelessWidget {
       );
     }
 
-  // Usuario autenticado: mostrar tarjetas según roles
-  final user = authState.user;
+    // Usuario autenticado: mostrar tarjetas según roles
 
     return MultiBlocListener(
       listeners: [
@@ -72,38 +80,52 @@ class ConversationPage extends StatelessWidget {
         ),
       ],
       child: Builder(builder: (context) {
-        // Sólo leer LO NECESARIO del AuthBloc: evita rebuilds por cambios irrelevantes
-        final String? role = context.select<AuthBloc, String?>((bloc) {
-          final s = bloc.state;
-          return s is AuthAuthenticatedState ? s.user.role : null;
-        });
-
         return Scaffold(
           appBar: AppBar(title: const Text('Conversaciones')),
-          body: Column(
-            children: [
-              // UI condicional por role (reconstruye solo si cambia role)
-              if (role != null && role.contains('sales')) ...[
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 _RoleCard(
-                  title: 'Conversaciones vendedores',
-                  icon: Icons.storefront_outlined,
-                  color: Colors.orange,
-                  onTap: () => _openList(context, 'sales'),
+                  title: 'Conversaciones anónimas',
+                  icon: Icons.person_outline,
+                  color: Colors.grey,
+                  onTap: () => _openList(context, 'anonymous'),
                 ),
                 const SizedBox(height: 16),
-              ],
-              // Parte que depende del ConversationBloc: usar BlocBuilder
-              Expanded(
-                child: BlocBuilder<ConversationBloc, ConversationState>(
-                  builder: (context, convState) {
-                    if (convState is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
-                    if (convState is ConversationLoadedState) return ListView(/*...*/);
-                    if (convState is ConversationErrorState) return Center(child: Text('Error: ${convState.message}'));
-                    return const SizedBox.shrink();
-                  },
+                // Mostrar técnico si tiene el rol tecnico
+                if (hasTecnico) ...[
+                  _RoleCard(
+                    title: 'Conversaciones técnico',
+                    icon: Icons.build_outlined,
+                    color: Colors.deepPurple,
+                    onTap: () => _openList(context, 'tecnico'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                // Mostrar ventas si tiene el rol sales
+                if (hasSales) ...[
+                  _RoleCard(
+                    title: 'Conversaciones vendedores',
+                    icon: Icons.storefront_outlined,
+                    color: Colors.orange,
+                    onTap: () => _openList(context, 'sales'),
+                  ),
+                ],
+                // Parte que depende del ConversationBloc: usar BlocBuilder
+                Expanded(
+                  child: BlocBuilder<ConversationBloc, ConversationState>(
+                    builder: (context, convState) {
+                      if (convState is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
+                      if (convState is ConversationLoadedState) return ListView(/*...*/);
+                      if (convState is ConversationErrorState) return Center(child: Text('Error: ${convState.message}'));
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }),

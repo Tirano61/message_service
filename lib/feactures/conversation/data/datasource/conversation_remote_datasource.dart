@@ -39,9 +39,9 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     String path;
     if (type != null && type.isNotEmpty) {
       final t = type.toLowerCase();
-      if (t == 'tecnico' || t == 'technical') {
+      if ( t == 'tecnico' ) {
         path = '$_baseUrl/conversation/create-tecnico';
-      } else if (t == 'sales' || t == 'seller' || t == 'vendedor') {
+      } else if ( t == 'sales' ) {
         path = '$_baseUrl/conversation/create-sales';
       } else {
         // unknown type: fallback to default create
@@ -55,12 +55,13 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       'Content-Type': 'application/json',
     };
     if (token.isNotEmpty) {
-      headers['auth'] = token;
+      headers['Authorization'] = 'Bearer $token';
     }
     final payload = <String, dynamic>{'title': title};
     // "user" must be a UUID and only sent when the user is authenticated
     if (userId.isNotEmpty) {
       payload['user'] = userId;
+      payload['type'] = type;
     }
 
     final response = await http.post(
@@ -93,7 +94,7 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       'Content-Type': 'application/json',
     };
     if (token.isNotEmpty) {
-      headers['auth'] = token;
+      headers['Authorization'] = 'Bearer $token';
     }
     final response = await http.get(
       url,
@@ -121,7 +122,7 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       'Content-Type': 'application/json',
     };
     if (token.isNotEmpty) {
-      headers['auth'] = token;
+      headers['Authorization'] = 'Bearer $token';
     }
     final response = await http.get(
       url,
@@ -152,7 +153,7 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     final headers = {
       'Content-Type': 'application/json',
     };
-    if (token.isNotEmpty) headers['auth'] = token;
+    if (token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
 
     final response = await http.delete(url, headers: headers);
     if (response.statusCode == 200 || response.statusCode == 204) {
