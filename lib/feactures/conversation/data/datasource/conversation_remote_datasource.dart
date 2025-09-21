@@ -9,7 +9,7 @@ abstract class ConversationRemoteDataSource {
   required String token,
   required String userId,
   required String title,
-  String? type,
+  required String type,
   });
   Future<List<ConversationEntity>> getConversations({
     required String token,
@@ -59,9 +59,9 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     }
     final payload = <String, dynamic>{'title': title};
     // "user" must be a UUID and only sent when the user is authenticated
+    payload['type'] = type;
     if (userId.isNotEmpty) {
       payload['user'] = userId;
-      payload['type'] = type;
     }
 
     final response = await http.post(

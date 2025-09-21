@@ -6,6 +6,7 @@ class ConversationsModel {
 
   final String id;
   final String title;
+  final String? type;
   final List<MessageEntity> messages;
   final String userId;
   final String? sessionToken;
@@ -15,6 +16,7 @@ class ConversationsModel {
   ConversationsModel({
     required this.id,
     required this.title,
+    this.type,
   required this.messages,
   required this.userId,
   this.sessionToken,
@@ -25,7 +27,8 @@ class ConversationsModel {
   factory ConversationsModel.fromJson(dynamic json) {
     return ConversationsModel(
       id: json['id'] ?? json['_id'] ?? '',
-      title: json['title'] ?? '',
+  title: json['title'] ?? '',
+  type: json['type'] ?? json['conversation_type'] ?? null,
       messages: (json['messages'] as List?)?.map((e) {
         if (e is Map<String, dynamic>) {
           return MessageEntity.fromJson(Map<String, dynamic>.from(e));
@@ -36,8 +39,8 @@ class ConversationsModel {
           return MessageEntity(id: '', content: '', sender: '', created_at: DateTime.now().toUtc());
         }
       }).toList() ?? <MessageEntity>[],
-      userId: json['userId'] ?? json['user_id'] ?? '',
-      sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
+    userId: json['userId'] ?? json['user_id'] ?? '',
+    sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
   createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
   updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );
@@ -54,6 +57,7 @@ class ConversationsModel {
     return {
       'id': id,
       'title': title,
+      if (type != null) 'type': type,
   'messages': messages.map((m) => m.toJson()).toList(),
   'userId': userId,
   'session_token': sessionToken,
@@ -68,6 +72,7 @@ class ConversationsModel {
       title: entity.title ?? '',
   messages: entity.messages ?? [],
   userId: entity.userId ?? '',
+  type: entity.type,
   createdAt: entity.createdAt,
   updatedAt: entity.updatedAt,
     );
@@ -79,6 +84,7 @@ class ConversationsModel {
   messages: messages,
   userId: userId, // Aquí deberías asignar el userId correspondiente
   sessionToken: sessionToken,
+  type: type,
   createdAt: createdAt,
   updatedAt: updatedAt,
     );

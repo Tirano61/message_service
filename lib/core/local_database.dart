@@ -38,6 +38,19 @@ class LocalDatabase {
             created_at TEXT
           )
         ''');
+        // Nueva tabla para persistir conversaciones localmente con columna 'type'
+        await db.execute('''
+          CREATE TABLE conversations (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            user_id TEXT,
+            session_token TEXT,
+            type TEXT,
+            metadata TEXT,
+            created_at TEXT,
+            updated_at TEXT
+          )
+        ''');
       },
     );
   }
