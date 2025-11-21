@@ -22,7 +22,14 @@ final class MessagesListLoadedState extends MessageState {
 }
 
 final class MessageErrorState extends MessageState {
-  final String error;
+  final String message;
 
-  MessageErrorState(this.error);
+  MessageErrorState(this.message);
+}
+
+final class MessageSentState extends MessageState {
+  final MessageEntity? userMessage;
+  final MessageEntity? botResponse;
+
+  MessageSentState({this.userMessage, this.botResponse});
 }

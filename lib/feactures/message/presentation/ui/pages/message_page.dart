@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
-import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/core/session_manager.dart';
 // local datasource is now accessed via the MessageBloc/repository
@@ -253,15 +252,8 @@ class _MessagePageState extends State<MessagePage> {
         actions: [
           BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
-              // Preferir el estado real del socket si está disponible
-              try {
-                final connected = SocketService().isConnected();
-                return Icon(Icons.connect_without_contact, color: connected ? Colors.green : Colors.red);
-              } catch (_) {
-                // Fallback al estado del bloc
-                final iconColor = state is ServerConnectedState ? Colors.green : Colors.red;
-                return Icon(Icons.connect_without_contact, color: iconColor);
-              }
+              // HTTP-only: always show disconnected (no real-time connection)
+              return const Icon(Icons.connect_without_contact, color: Colors.red);
             },
           ),
         ],
@@ -363,14 +355,7 @@ class _MessagePageState extends State<MessagePage> {
                         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                         child: bubble,
                       ),
-                      if ((message['local'] == true) && SocketService().isConnected())
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: SizedBox(height: 14, child: _WaitingDots()),
-                          ),
-                        ),
+                      // HTTP-only: no waiting dots since there's no real-time connection
                     ],
                   );
                 },

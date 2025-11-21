@@ -3,7 +3,6 @@ import 'package:message_service/feactures/auth/domain/entities/user.dart';
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
 import 'package:meta/meta.dart';
 import 'package:message_service/core/session_manager.dart';
-import 'package:message_service/core/services/socket_service.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -32,13 +31,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       
     });
     on<GuestAuthenticatedEvent>((event, emit) async {
-      // Save session info and connect socket
+      // Save session info
       SessionManager().sessionToken = event.sessionToken;
       SessionManager().conversationId = event.conversationId;
-      try {
-  // For anonymous session, pass empty token so SocketService reads from SessionManager
-  SocketService().connect(token: '');
-      } catch (_) {}
+      // HTTP-only: No socket connection needed
       emit(AuthGuestAuthenticatedState(sessionToken: event.sessionToken, conversationId: event.conversationId));
     });
   }
