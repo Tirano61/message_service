@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:message_service/core/services/socket_service.dart';
 import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 import 'package:message_service/feactures/auth/data/repositories/user_reository_impl.dart';
@@ -11,7 +10,6 @@ import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.
 import 'package:message_service/feactures/conversation/data/datasource/conversation_remote_datasource.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 import 'package:message_service/feactures/conversation/data/repository_impl/conversation_repository_impl.dart';
-import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/message/data/repository_impl/message_repository_impl.dart';
 import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
@@ -43,10 +41,9 @@ class MyApp extends StatelessWidget {
         }),
         BlocProvider<MessageBloc>(
           create: (_) {
-            // Construct repository with local + remote datasources
-            final dataSource = MessageDataSourceImpl(socketService: SocketService());
+            // HTTP-only repository
             final remote = MessageRemoteDataSourceImpl();
-            final repo = MessageRepositoryImpl(dataSource, remoteDataSource: remote);
+            final repo = MessageRepositoryImpl(remoteDataSource: remote);
             return MessageBloc(
               messageRepository: repo,
               userEntity: UserEntity(id: '', email: '', token: '', fullName: '', role: 'user')

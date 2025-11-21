@@ -1,49 +1,82 @@
-import 'package:message_service/feactures/message/data/datasource/message_datasource.dart';
 import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
 import 'package:message_service/feactures/message/data/datasource/message_remote_datasource.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 import 'package:message_service/feactures/message/domain/repository/message_repository.dart';
+import 'package:message_service/core/session_manager.dart';
 
 class MessageRepositoryImpl implements MessageRepository {
   
-  final MessageDataSourceImpl _messageDataSourceImpl;
-  // Optional remote datasource; if not provided callers should pass token when requesting remote
-  final MessageRemoteDataSource? _remoteDataSource;
+  final MessageRemoteDataSource _remoteDataSource;
   final LocalMessageDataSource _localDataSource = LocalMessageDataSource();
 
-  MessageRepositoryImpl(this._messageDataSourceImpl, {MessageRemoteDataSource? remoteDataSource}) : _remoteDataSource = remoteDataSource;
+  MessageRepositoryImpl({required MessageRemoteDataSource remoteDataSource}) 
+    : _remoteDataSource = remoteDataSource;
 
   @override
   void connectToServer(String token) {
-    _messageDataSourceImpl.connectToServer(token);
+    // HTTP-only: No connection needed
   }
 
   @override
   void listenForMessages(Function(dynamic) onMessage) {
-    return _messageDataSourceImpl.listenForMessages(onMessage);
+    // HTTP-only: Use polling instead of real-time listening
   }
 
   @override
   Future<void> deleteMessage(String messageId) {
-    return _messageDataSourceImpl.deleteMessage(messageId);
+    throw UnimplementedError('Delete message not implemented for HTTP-only mode');
   }
 
   @override
   Future<MessageEntity> getMessage() {
-    return _messageDataSourceImpl.getMessage();
+    throw UnimplementedError('Real-time message receiving not supported in HTTP-only mode. Use getListMessages instead.');
   }
   
   @override
-  sendMessage(MessageEntity message) {
-    return _messageDataSourceImpl.sendMessage(message);
+  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message) async {
+    final sessionToken = SessionManager().sessionToken;
+    final conversationId = SessionManager().conversationId;
+    
+    if (sessionToken != null && sessionToken.isNotEmpty && 
+        conversationId != null && conversationId.isNotEmpty) {
+      
+      try {
+        final result = await _remoteDataSource.sendMessage(
+          conversationId: conversationId,
+          sessionToken: sessionToken,
+          sender: message.sender,
+          content: message.content,
+          jwtToken: null, // Por ahora null, se puede añadir parámetro después
+        );
+        
+        // Persistir ambos mensajes localmente después del envío exitoso
+        if (result['userMessage'] != null) {
+          try {
+            await _localDataSource.insertMessage(conversationId, result['userMessage']!);
+          } catch (_) {}
+        }
+        if (result['botResponse'] != null) {
+          try {
+            await _localDataSource.insertMessage(conversationId, result['botResponse']!);
+          } catch (_) {}
+        }
+        
+        return result;
+      } catch (e) {
+        // Sin fallback a socket - solo HTTP
+        throw Exception('Failed to send message via HTTP: $e');
+      }
+    }
+    
+    throw Exception('Missing session token or conversation ID');
   }
   
   @override
   Future<List<MessageEntity>> getListMessages({required String conversationId, String? token}) async {
-    // If a token is provided and we have a remote datasource, prefer remote fetch and persist into local DB.
-    if (token != null && token.isNotEmpty && _remoteDataSource != null) {
+    // HTTP-only: try remote first, then local fallback
+    if (token != null && token.isNotEmpty) {
       try {
-  final remoteList = await _remoteDataSource.getMessages(token: token, conversationId: conversationId);
+        final remoteList = await _remoteDataSource.getMessages(token: token, conversationId: conversationId);
         // Persist remote results into local DB to keep it in sync (replace on conflict)
         for (final m in remoteList) {
           try {

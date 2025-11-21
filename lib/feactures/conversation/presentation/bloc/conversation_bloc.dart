@@ -4,7 +4,6 @@ import 'package:message_service/feactures/conversation/domain/entities/conversti
 import 'package:meta/meta.dart';
 import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
-import 'package:message_service/core/services/socket_service.dart';
 
 part 'conversation_event.dart';
 part 'conversation_state.dart';
@@ -50,15 +49,12 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     try {
   final newConv = await conversationRepository.createConversation(event.userId ?? '', event.title, event.token, event.type);
 
-      // If backend returned a session token (conversación anónima), store and connect
+      // If backend returned a session token (conversación anónima), store it
       // Only store session_token when the creation was anonymous (no userId provided)
       if ((event.userId == null || event.userId.isEmpty) && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
         SessionManager().sessionToken = newConv.sessionToken;
         SessionManager().conversationId = newConv.id;
-        try {
-          // Pass empty token so SocketService chooses the anonymous session stored in SessionManager
-          SocketService().connect(token: '');
-        } catch (_) {}
+        // HTTP-only: No socket connection needed
       }
 
       if (previous is ConversationLoadedState) {

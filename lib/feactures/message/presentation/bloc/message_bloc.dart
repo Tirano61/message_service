@@ -25,7 +25,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<LoadMessageEvent>((event, emit) async {
       emit(MessageLoadingState());
       try {
-        // receive a single message from socket
+        // HTTP-only: load messages from repository
         final msg = await messageRepository.getMessage();
         emit(MessageLoadedState(msg));
 
@@ -74,8 +74,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
             sender: senderId, // use provided senderId or user id or session token
           created_at: DateTime.now().toUtc(),
         );
-  await messageRepository.sendMessage(messageEntity);
-        // Optionally emit a local state if needed
+        
+        // Enviar mensaje y recibir respuesta con userMessage y botResponse
+        final result = await messageRepository.sendMessage(messageEntity);
+        
+        // Emitir estado con los mensajes recibidos (userMessage y botResponse)
+        emit(MessageSentState(
+          userMessage: result['userMessage'],
+          botResponse: result['botResponse'],
+        ));
+        
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
