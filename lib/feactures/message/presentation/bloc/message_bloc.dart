@@ -25,20 +25,15 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<LoadMessageEvent>((event, emit) async {
       emit(MessageLoadingState());
       try {
-        // HTTP-only: load messages from repository
-        final msg = await messageRepository.getMessage();
-        emit(MessageLoadedState(msg));
-
-        // refresh full conversation list so UI can render confirmed messages and stop animations
+        // HTTP-only: load messages list from repository
         String? convId = event.conversationId ?? SessionManager().conversationId;
         final token = event.token ?? SessionManager().sessionToken;
+        
         if (convId != null && convId.isNotEmpty) {
-          try {
-            final list = await messageRepository.getListMessages(conversationId: convId, token: token);
-            emit(MessagesListLoadedState(list));
-          } catch (_) {
-            // ignore list refresh errors here
-          }
+          final list = await messageRepository.getListMessages(conversationId: convId, token: token);
+          emit(MessagesListLoadedState(list));
+        } else {
+          emit(MessageErrorState('No conversation ID available'));
         }
       } catch (e) {
         emit(MessageErrorState(e.toString()));
@@ -85,6 +80,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         ));
         
       } catch (e) {
+        // Imprimir el error completo en consola para debug
+        print('[DEBUG] Error al enviar mensaje: $e');
         emit(MessageErrorState(e.toString()));
       }
     });

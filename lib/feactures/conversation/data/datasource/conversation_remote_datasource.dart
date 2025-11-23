@@ -57,12 +57,14 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     if (token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-    final payload = <String, dynamic>{'title': title};
-    // "user" must be a UUID and only sent when the user is authenticated
-    payload['type'] = type;
-    if (userId.isNotEmpty) {
-      payload['user'] = userId;
-    }
+    // Para conversaciones anónimas (type='general' o 'anonimo'), siempre enviar campos específicos
+    final isAnonymous = (type == 'general' || type == 'anonimo' || type == 'anonymous');
+    
+    final payload = <String, dynamic>{
+      'title': isAnonymous ? "" : title,
+      'user': isAnonymous ? "" : userId,
+      'type': isAnonymous ? "general" : (type ?? "general"),
+    };
 
     final response = await http.post(
       url,

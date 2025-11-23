@@ -49,13 +49,14 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     try {
   final newConv = await conversationRepository.createConversation(event.userId ?? '', event.title, event.token, event.type);
 
-      // If backend returned a session token (conversación anónima), store it
-      // Only store session_token when the creation was anonymous (no userId provided)
-      if ((event.userId == null || event.userId.isEmpty) && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
+      // Store conversation ID for navigation (always needed)
+      SessionManager().conversationId = newConv.id;
+      
+      // Store session token only for anonymous conversations (type 'general')
+      if (event.type == 'general' && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
         SessionManager().sessionToken = newConv.sessionToken;
-        SessionManager().conversationId = newConv.id;
-        // HTTP-only: No socket connection needed
       }
+      // HTTP-only: No socket connection needed
 
       if (previous is ConversationLoadedState) {
         final updated = List<ConversationEntity>.from(previous.conversations)..insert(0, newConv);

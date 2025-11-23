@@ -52,20 +52,28 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String content,
     String? jwtToken,
   }) async {
-    final url = Uri.parse('$_baseUrl/messages/send');
+    // Determinar endpoint según si el usuario está autenticado o no
+    final isAuthenticated = jwtToken != null && jwtToken.isNotEmpty;
+    final endpoint = isAuthenticated ? '/message/send/authenticated' : '/message/send';
+    final url = Uri.parse('$_baseUrl$endpoint');
+    
     final headers = {'Content-Type': 'application/json'};
     
-    // Usar Bearer token si está disponible, sino usar session_token
-    if (jwtToken != null && jwtToken.isNotEmpty) {
+    // Usar Bearer token para usuarios autenticados
+    if (isAuthenticated) {
       headers['Authorization'] = 'Bearer $jwtToken';
     }
     
-    final payload = {
+    // Estructura de payload según tipo de usuario
+    final payload = <String, dynamic>{
       'conversationId': conversationId,
-      'session_token': sessionToken,
-      'sender': sender,
       'content': content,
     };
+    
+    // Solo agregar session_token para usuarios anónimos
+    if (!isAuthenticated) {
+      payload['session_token'] = sessionToken;
+    }
     
     final response = await http.post(
       url,

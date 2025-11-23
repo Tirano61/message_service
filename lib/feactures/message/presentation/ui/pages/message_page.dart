@@ -42,7 +42,7 @@ class _MessagePageState extends State<MessagePage> {
   _scrollController = ScrollController();
   WidgetsBinding.instance.addPostFrameCallback((_) {
   context.read<MessageBloc>().add(ConnectServerEvent());
-  context.read<MessageBloc>().add(LoadMessageEvent());
+  context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
 });
     // Inicializar mensajes si vienen como parámetro
     final authState = context.read<AuthBloc>().state;
@@ -265,7 +265,7 @@ class _MessagePageState extends State<MessagePage> {
           if (state is MessageLoadedState) {
             // no-op: list refresh handled by MessagesListLoadedState
             // continue listening for next message
-            context.read<MessageBloc>().add(LoadMessageEvent());
+            context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
           }
           if (state is MessagesListLoadedState) {
             try {
