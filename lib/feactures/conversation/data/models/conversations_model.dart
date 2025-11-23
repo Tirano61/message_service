@@ -25,10 +25,24 @@ class ConversationsModel {
   });
 
   factory ConversationsModel.fromJson(dynamic json) {
+    // Manejar userId desde diferentes estructuras de respuesta
+    String extractedUserId = '';
+    if (json['user_id'] != null && json['user_id'] is String) {
+      // Sales/Tecnico: user_id directo
+      extractedUserId = json['user_id'] as String;
+    } else if (json['user'] != null && json['user'] is Map) {
+      // Sales/Tecnico: objeto user anidado
+      extractedUserId = (json['user'] as Map)['id']?.toString() ?? '';
+    } else if (json['userId'] != null) {
+      // Fallback: userId directo
+      extractedUserId = json['userId']?.toString() ?? '';
+    }
+    // Para conversaciones general (anónimas): userId queda como cadena vacía
+
     return ConversationsModel(
       id: json['id'] ?? json['_id'] ?? '',
-  title: json['title'] ?? '',
-  type: json['type'] ?? json['conversation_type'] ?? null,
+      title: json['title'] ?? '',
+      type: json['type'] ?? json['conversation_type'] ?? null,
       messages: (json['messages'] as List?)?.map((e) {
         if (e is Map<String, dynamic>) {
           return MessageEntity.fromJson(Map<String, dynamic>.from(e));
@@ -39,8 +53,8 @@ class ConversationsModel {
           return MessageEntity(id: '', content: '', sender: '', created_at: DateTime.now().toUtc());
         }
       }).toList() ?? <MessageEntity>[],
-    userId: json['userId'] ?? json['user_id'] ?? '',
-    sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
+      userId: extractedUserId,
+      sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
   createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
   updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );

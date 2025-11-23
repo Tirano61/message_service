@@ -51,7 +51,7 @@ class ConversationPage extends StatelessWidget {
                 title: 'Conversaciones anónimas',
                 icon: Icons.person_outline,
                 color: Colors.grey,
-                onTap: () => _openList(context, 'anonimo'),
+                onTap: () => _openList(context, 'general'),
               ),
             ],
           ),
@@ -93,7 +93,7 @@ class ConversationPage extends StatelessWidget {
                   title: 'Conversaciones anónimas',
                   icon: Icons.person_outline,
                   color: Colors.grey,
-                  onTap: () => _openList(context, 'anonymous'),
+                  onTap: () => _openList(context, 'general'),
                 ),
                 const SizedBox(height: 16),
                 // Mostrar técnico si tiene el rol tecnico
@@ -186,9 +186,24 @@ class _ConversationListPageState extends State<ConversationListPage> {
     final authState = context.read<AuthBloc>().state;
     final bool isAuthenticated = authState is AuthAuthenticatedState;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Lista de ${widget.type}'),
+    return BlocListener<ConversationBloc, ConversationState>(
+      listener: (context, state) {
+        if (state is ConversationCreatedState) {
+          // Navegar automáticamente a MessagePage cuando se crea una conversación
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MessagePage(
+                conversationId: state.conversation.id,
+                title: state.conversation.title ?? 'Chat',
+              ),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Lista de ${widget.type}'),
         actions: [
           // Si es lista anónima y no está autenticado, mostrar botón para ir al login
           if ((widget.type == 'anonymous' || widget.type == 'anonimo') && !isAuthenticated)
@@ -234,7 +249,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
           return const SizedBox.shrink();
         },
       ),
-      floatingActionButton: _NewConversationFab(type: widget.type),
+        floatingActionButton: _NewConversationFab(type: widget.type),
+      ),
     );
   }
 }
@@ -268,13 +284,14 @@ class _NewConversationFab extends StatelessWidget {
         final authState = context.read<AuthBloc>().state;
         if (authState is AuthAuthenticatedState) {
           final user = authState.user;
-          if (type != 'anonimo' && !user.hasRole(type)) {
+          // Permitir 'general' (conversación anónima) siempre, validar otros roles
+          if (type != 'general' && type != 'anonimo' && !user.hasRole(type)) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No tienes permisos para crear conversaciones de tipo "$type".')));
             return;
           }
           context.read<ConversationBloc>().add(CreateConversationEvent(token: user.token, userId: user.id, title: result, type: type));
         } else {
-          if (type != 'anonymous') {
+          if (type != 'general' && type != 'anonymous') {
             final goLogin = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
@@ -289,7 +306,8 @@ class _NewConversationFab extends StatelessWidget {
             if (goLogin == true) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
             return;
           }
-          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: result, type: 'anonimo'));
+          // Para conversaciones anónimas, enviar title="", user="", type="general"
+          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: '', type: 'general'));
         }
       },
     );
