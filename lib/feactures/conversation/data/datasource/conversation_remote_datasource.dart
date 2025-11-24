@@ -149,7 +149,7 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
   Future<void> deleteConversation({required String token, required String conversationId, String? sessionToken}) async {
     // Si sessionToken está presente, usarlo como query param para eliminar una conversación anónima
     final path = (sessionToken != null && sessionToken.isNotEmpty)
-        ? '$_baseUrl/conversation/$conversationId?session_token=$sessionToken'
+        ? '$_baseUrl/conversation/$conversationId?session_id=$sessionToken'
         : '$_baseUrl/conversation/$conversationId';
     final url = Uri.parse(path);
     final headers = {

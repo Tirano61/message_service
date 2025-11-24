@@ -44,7 +44,7 @@ class LocalDatabase {
             id TEXT PRIMARY KEY,
             title TEXT,
             user_id TEXT,
-            session_token TEXT,
+            session_id TEXT,
             type TEXT,
             metadata TEXT,
             created_at TEXT,

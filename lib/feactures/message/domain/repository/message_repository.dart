@@ -1,7 +1,7 @@
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 
 abstract class MessageRepository {
-  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message);
+  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? jwtToken});
   Future<MessageEntity> getMessage();
   Future<List<MessageEntity>> getListMessages({required String conversationId, String? token});
   Future<void> deleteMessage(String messageId);

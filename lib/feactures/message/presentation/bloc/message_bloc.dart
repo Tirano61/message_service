@@ -71,7 +71,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         );
         
         // Enviar mensaje y recibir respuesta con userMessage y botResponse
-        final result = await messageRepository.sendMessage(messageEntity);
+        // Pasar JWT token si el usuario está autenticado
+        final jwtToken = userEntity.token.isNotEmpty ? userEntity.token : null;
+        final result = await messageRepository.sendMessage(messageEntity, jwtToken: jwtToken);
         
         // Emitir estado con los mensajes recibidos (userMessage y botResponse)
         emit(MessageSentState(
