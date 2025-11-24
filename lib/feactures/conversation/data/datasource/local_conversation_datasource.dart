@@ -23,7 +23,7 @@ class LocalConversationDataSourceImpl implements LocalConversationDataSource {
       'id': model.id,
       'title': model.title,
       'user_id': model.userId,
-      'session_token': model.sessionToken,
+      'session_id': model.sessionToken,
       'type': model.type,
       'metadata': jsonEncode({
         'created_at': model.createdAt?.toIso8601String(),
@@ -57,7 +57,7 @@ class LocalConversationDataSourceImpl implements LocalConversationDataSource {
         title: (r['title'] ?? '') as String?,
         messages: <MessageEntity>[],
         userId: (r['user_id'] ?? '') as String?,
-        sessionToken: r['session_token'] as String?,
+        sessionToken: r['session_id'] as String?,
         createdAt: created,
         updatedAt: updated,
       );

@@ -33,7 +33,7 @@ class MessageRepositoryImpl implements MessageRepository {
   }
   
   @override
-  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message) async {
+  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? jwtToken}) async {
     final sessionToken = SessionManager().sessionToken;
     final conversationId = SessionManager().conversationId;
     
@@ -46,7 +46,7 @@ class MessageRepositoryImpl implements MessageRepository {
           sessionToken: sessionToken,
           sender: message.sender,
           content: message.content,
-          jwtToken: null, // Por ahora null, se puede añadir parámetro después
+          jwtToken: jwtToken, // Pasar el JWT token del usuario autenticado
         );
         
         // Persistir ambos mensajes localmente después del envío exitoso

@@ -68,11 +68,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     final payload = <String, dynamic>{
       'conversationId': conversationId,
       'content': content,
+      'sender': 'user', // Requerido por el servidor
     };
     
-    // Solo agregar session_token para usuarios anónimos
+    // Solo agregar session_id para usuarios anónimos
     if (!isAuthenticated) {
-      payload['session_token'] = sessionToken;
+      payload['session_id'] = sessionToken;
     }
     
     final response = await http.post(

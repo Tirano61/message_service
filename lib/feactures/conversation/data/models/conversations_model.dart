@@ -54,7 +54,7 @@ class ConversationsModel {
         }
       }).toList() ?? <MessageEntity>[],
       userId: extractedUserId,
-      sessionToken: json['session_token'] ?? json['sessionToken'] ?? null,
+      sessionToken: json['session_id'] ?? json['session_token'] ?? json['sessionToken'] ?? null,
   createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
   updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );
@@ -74,7 +74,7 @@ class ConversationsModel {
       if (type != null) 'type': type,
   'messages': messages.map((m) => m.toJson()).toList(),
   'userId': userId,
-  'session_token': sessionToken,
+  'session_id': sessionToken,
   if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
   if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
