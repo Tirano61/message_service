@@ -168,27 +168,50 @@ class _MessagePageState extends State<MessagePage> {
         m['timestamp'] = _toIsoTimestamp(m['timestamp']);
       }
 
-      // normalize isMe using string comparison to avoid type mismatches
-      var sender = (m['sender'] ?? '').toString();
-      if (sender.isEmpty) {
-        // Heurística: si no hay sender, comparar con mensajes temporales locales por text+created_at
-        final created = (m['created_at'] ?? m['timestamp'] ?? '').toString();
-        final matchTemp = localTemps.any((t) {
-          final ttext = (t['text'] ?? '').toString();
-          final tcreated = (t['created_at'] ?? '').toString();
-          return ttext.isNotEmpty && ttext == (m['text'] ?? '') && (tcreated.isEmpty || tcreated == created);
-        });
-        if (matchTemp) {
-          sender = (authState is AuthAuthenticatedState) ? authState.user.id.toString() : 'local';
+      // normalize isMe using sender role or ids
+      var sender = (m['sender'] ?? '').toString().trim();
+      final senderIdField = (m['senderId'] ?? m['sender_id'] ?? m['userId'] ?? m['user_id'] ?? '').toString().trim();
+
+      // If explicit role strings are used by server (e.g., 'user'|'bot'), respect them
+      if (sender.isNotEmpty) {
+        if (sender.toLowerCase() == 'user') {
+          m['isMe'] = true;
+        } else if (sender.toLowerCase() == 'bot') {
+          m['isMe'] = false;
+        } else {
+          // Unknown sender string: try id matching
+          if (authState is AuthAuthenticatedState) {
+            m['isMe'] = sender == authState.user.id.toString() || senderIdField == authState.user.id.toString();
+          } else {
+            // anonymous: treat 'local' as me
+            m['isMe'] = sender == 'local' || senderIdField == 'local';
+          }
+        }
+      } else {
+        // No sender string: fallback to matching by senderId or heuristics against temporals
+        if (senderIdField.isNotEmpty) {
+          if (authState is AuthAuthenticatedState) {
+            m['isMe'] = senderIdField == authState.user.id.toString();
+          } else {
+            m['isMe'] = senderIdField == 'local';
+          }
+        } else {
+          // Heurística: si no hay sender ni senderId, comparar con mensajes temporales locales por text+created_at
+          final created = (m['created_at'] ?? m['timestamp'] ?? '').toString();
+          final matchTemp = localTemps.any((t) {
+            final ttext = (t['text'] ?? '').toString();
+            final tcreated = (t['created_at'] ?? '').toString();
+            return ttext.isNotEmpty && ttext == (m['text'] ?? '') && (tcreated.isEmpty || tcreated == created);
+          });
+          if (matchTemp) {
+            m['isMe'] = (authState is AuthAuthenticatedState) ? true : true; // temporales locales siempre son míos
+          } else {
+            m['isMe'] = false;
+          }
         }
       }
-      if (authState is AuthAuthenticatedState) {
-        m['isMe'] = sender.isNotEmpty && sender == authState.user.id.toString();
-      } else {
-        // anonymous: if sender was inferred as 'local' mark isMe true
-        m['isMe'] = sender == 'local';
-      }
-      m['sender'] = sender;
+      // Ensure sender field is set for later debug/usage
+      m['sender'] = sender.isNotEmpty ? sender : senderIdField;
     }
 
     // If initialMessages were provided by the caller (server), preserve that order
@@ -267,21 +290,25 @@ class _MessagePageState extends State<MessagePage> {
             // continue listening for next message
             context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
           }
-          if (state is MessagesListLoadedState) {
+          if (state is MessagesDisplayLoadedState) {
             try {
               final list = state.messages;
-              // Always replace the visible list with the repository/bloc-provided list.
-              // This ensures any optimistic local messages are removed when the server
-              // confirms and prevents the waiting animation from sticking around.
               setState(() {
                 messages.clear();
                 for (final m in list) {
-                  final ts = m.created_at.toIso8601String();
-                  messages.add({'text': m.content, 'isMe': false, 'timestamp': ts, 'created_at': ts, 'sender': m.sender, 'local': false, 'seq': _seqCounter++, 'source': 'repo'});
+                  // Incoming maps from mapper already have text, timestamp and isMe
+                  messages.add({...m, 'local': false, 'seq': _seqCounter++, 'source': m['source'] ?? 'repo'});
                 }
                 _normalizeAndSortMessages();
               });
               WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
+            } catch (_) {}
+          }
+          if (state is MessageSentState) {
+            // After a successful send, reload the full messages list so the
+            // server-confirmed user message and bot response are shown.
+            try {
+              context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
             } catch (_) {}
           }
           // Generic error handling: if the state type name contains 'Error' try to show a message

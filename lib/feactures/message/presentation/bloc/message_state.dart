@@ -21,6 +21,12 @@ final class MessagesListLoadedState extends MessageState {
   MessagesListLoadedState(this.messages);
 }
 
+final class MessagesDisplayLoadedState extends MessageState {
+  final List<Map<String, dynamic>> messages;
+
+  MessagesDisplayLoadedState(this.messages);
+}
+
 final class MessageErrorState extends MessageState {
   final String message;
 
