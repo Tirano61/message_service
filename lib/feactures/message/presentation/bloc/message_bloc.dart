@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
 import 'package:message_service/feactures/message/domain/repository/message_repository.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
+import 'package:message_service/feactures/message/data/utils/message_display_mapper.dart';
 import 'package:uuid/uuid.dart';
 import 'package:message_service/core/session_manager.dart';
 
@@ -31,7 +32,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         
         if (convId != null && convId.isNotEmpty) {
           final list = await messageRepository.getListMessages(conversationId: convId, token: token);
+          // Emit entity list for domain consumers
           emit(MessagesListLoadedState(list));
+          // Also emit display-ready maps so UI doesn't need heavy normalization
+          final rawMaps = list.map((e) => e.toJson()).toList();
+          final display = prepareDisplayMessages(rawMaps, currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'repo');
+          emit(MessagesDisplayLoadedState(display));
         } else {
           emit(MessageErrorState('No conversation ID available'));
         }
@@ -45,6 +51,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       try {
         final list = await messageRepository.getListMessages(conversationId: event.conversationId, token: event.token);
         emit(MessagesListLoadedState(list));
+        final rawMaps = list.map((e) => e.toJson()).toList();
+        final display = prepareDisplayMessages(rawMaps, currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'repo');
+        emit(MessagesDisplayLoadedState(display));
       } catch (e) {
         emit(MessageErrorState(e.toString()));
       }
