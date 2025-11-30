@@ -382,7 +382,25 @@ class _MessagePageState extends State<MessagePage> {
                         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                         child: bubble,
                       ),
-                      // HTTP-only: no waiting dots since there's no real-time connection
+                      // If this is a local optimistic message sent by the user, show
+                      // the bot 'thinking' indicator (three dots) on the left until
+                      // the server confirms and the list is reloaded.
+                      if (message['local'] == true && isMe) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(255, 234, 216, 244),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const _WaitingDots(),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                     ],
                   );
                 },
