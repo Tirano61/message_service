@@ -48,6 +48,10 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     emit(ConversationLoadingState());
     try {
   final newConv = await conversationRepository.createConversation(event.userId ?? '', event.title, event.token, event.type);
+      try {
+        // ignore: avoid_print
+        print('[DEBUG] Created conversation title from repo: "${newConv.title}"');
+      } catch (_) {}
 
       // Store conversation ID for navigation (always needed)
       SessionManager().conversationId = newConv.id;

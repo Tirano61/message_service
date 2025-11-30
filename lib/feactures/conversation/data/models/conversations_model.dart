@@ -39,9 +39,23 @@ class ConversationsModel {
     }
     // Para conversaciones general (anónimas): userId queda como cadena vacía
 
+    // Normalize title: support nested structures and guard against malformed placeholder 'title'
+    dynamic rawTitle = json['title'] ?? json['titulo'] ?? '';
+    String normalizedTitle = '';
+    if (rawTitle is String) {
+      normalizedTitle = rawTitle.trim();
+    } else if (rawTitle is Map) {
+      // If server returns { title: { ... } } try to extract inner string
+      normalizedTitle = (rawTitle['title'] ?? rawTitle['nombre'] ?? '').toString().trim();
+    } else {
+      normalizedTitle = rawTitle?.toString().trim() ?? '';
+    }
+    // Defensive: if the server mistakenly returned the literal key name 'title', treat as empty
+    if (normalizedTitle.toLowerCase() == 'title') normalizedTitle = '';
+
     return ConversationsModel(
       id: json['id'] ?? json['_id'] ?? '',
-      title: json['title'] ?? '',
+      title: normalizedTitle,
       type: json['type'] ?? json['conversation_type'] ?? null,
       messages: (json['messages'] as List?)?.map((e) {
         if (e is Map<String, dynamic>) {

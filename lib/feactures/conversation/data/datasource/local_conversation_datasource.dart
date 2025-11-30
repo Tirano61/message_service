@@ -44,6 +44,11 @@ class LocalConversationDataSourceImpl implements LocalConversationDataSource {
       rows = await db.query('conversations', orderBy: 'rowid DESC');
     }
     return rows.map((r) {
+      try {
+        // ignore: avoid_print
+        print('[DEBUG] local conversation row: $r');
+      } catch (_) {}
+      // No DB modifications here; caller may uninstall/reinstall to reset DB.
       DateTime? created;
       DateTime? updated;
       try {

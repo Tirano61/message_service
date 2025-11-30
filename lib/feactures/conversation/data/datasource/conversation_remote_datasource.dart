@@ -57,9 +57,11 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     if (token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-    // Para conversaciones anónimas (type='general' o 'anonimo'), siempre enviar campos específicos
-    final isAnonymous = (type == 'general' || type == 'anonimo' || type == 'anonymous');
-    
+    // Consider a conversation anonymous only when type indicates 'general' *and* no auth token provided.
+    final typeLower = (type ?? '').toLowerCase();
+    final isTypeGeneral = (typeLower == 'general' || typeLower == 'anonimo' || typeLower == 'anonymous');
+    final isAnonymous = isTypeGeneral && (token.isEmpty);
+
     final payload = <String, dynamic>{
       'title': isAnonymous ? "" : title,
       'user': isAnonymous ? "" : userId,
@@ -74,6 +76,10 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body);
+      try {
+        // ignore: avoid_print
+        print('[DEBUG] createConversation response: $data');
+      } catch (_) {}
       // Intentamos mapear una respuesta tipo { id, title, messages?, userId? }
       final model = ConversationsModel.fromJson(data);
       return model.toEntity();

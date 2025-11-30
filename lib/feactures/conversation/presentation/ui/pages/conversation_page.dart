@@ -219,19 +219,45 @@ class _ConversationListPageState extends State<ConversationListPage> {
           if (state is ConversationLoadedState) {
             final convs = state.conversations;
             if (convs.isEmpty) return Center(child: Text('No hay conversaciones de tipo "${widget.type}"'));
+              // Debug: imprimir títulos para verificar contenido
+              try {
+                // ignore: avoid_print
+                print('[DEBUG] ConversationListPage titles: ${convs.map((c) => c.title).toList()}');
+              } catch (_) {}
             return ListView.builder(
               itemCount: convs.length,
               itemBuilder: (ctx, i) {
                 final c = convs[i];
+                String formatDate(DateTime? dt) {
+                  if (dt == null) return '';
+                  try {
+                    final local = dt.toLocal();
+                    final y = local.year.toString().padLeft(4, '0');
+                    final m = local.month.toString().padLeft(2, '0');
+                    final d = local.day.toString().padLeft(2, '0');
+                    final hh = local.hour.toString().padLeft(2, '0');
+                    final mm = local.minute.toString().padLeft(2, '0');
+                    return '$y-$m-$d $hh:$mm';
+                  } catch (_) {
+                    return dt.toString();
+                  }
+                }
+
+                final subtitle = (c.createdAt != null && (c.createdAt is DateTime))
+                    ? formatDate(c.createdAt)
+                    : (c.id.length > 8 ? c.id.substring(0, 8) : c.id);
+
+                final pushTitle = (c.title != null && c.title!.isNotEmpty) ? c.title! : (c.createdAt != null ? formatDate(c.createdAt) : 'Chat');
+
                 return ListTile(
-                  title: Text(c.title ?? '(sin título)'),
-                  subtitle: Text(c.id),
+                  title: Text((c.title != null && c.title!.isNotEmpty) ? c.title! : 'Sin Titulo'),
+                  subtitle: Text(subtitle),
                   onTap: () {
                     try {
                       Navigator.push(
                         ctx,
                         MaterialPageRoute(
-                          builder: (_) => MessagePage(conversationId: c.id, title: c.title ?? 'Chat'),
+                          builder: (_) => MessagePage(conversationId: c.id, title: pushTitle),
                         ),
                       );
                     } catch (e) {
