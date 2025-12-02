@@ -53,8 +53,9 @@ class ConversationsModel {
     // Defensive: if the server mistakenly returned the literal key name 'title', treat as empty
     if (normalizedTitle.toLowerCase() == 'title') normalizedTitle = '';
 
+    final resolvedId = (json['conversation_id'] ?? json['conversationId'] ?? json['id'] ?? json['_id'])?.toString() ?? '';
     return ConversationsModel(
-      id: json['id'] ?? json['_id'] ?? '',
+      id: resolvedId,
       title: normalizedTitle,
       type: json['type'] ?? json['conversation_type'] ?? null,
       messages: (json['messages'] as List?)?.map((e) {
@@ -68,9 +69,9 @@ class ConversationsModel {
         }
       }).toList() ?? <MessageEntity>[],
       userId: extractedUserId,
-      sessionToken: json['session_id'] ?? json['session_token'] ?? json['sessionToken'] ?? null,
-  createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
-  updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
+      sessionToken: (json['session_token'] ?? json['sessionToken'] ?? json['session_id'])?.toString(),
+      createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -84,11 +85,14 @@ class ConversationsModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'conversation_id': id,
       'title': title,
       if (type != null) 'type': type,
   'messages': messages.map((m) => m.toJson()).toList(),
   'userId': userId,
+  'user': userId.isNotEmpty ? {'id': userId} : null,
   'session_id': sessionToken,
+  'session_token': sessionToken,
   if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
   if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
