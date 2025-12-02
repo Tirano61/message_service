@@ -10,8 +10,18 @@ List<Map<String, dynamic>> prepareDisplayMessages(List<dynamic> rawMessages, {St
       if (r is Map<String, dynamic>) {
         final model = MessagesModel.fromJson(r);
         final createdIso = model.createdAt.toIso8601String();
-        final sender = (model.sender ?? '').toString();
-        final senderId = (model.senderId ?? '').toString();
+        var sender = (model.sender ?? '').toString();
+        var senderId = (model.senderId ?? '').toString();
+
+        // If model didn't capture role, try to inspect raw map aliases
+        if (sender.isEmpty) {
+          final alt = r['role'] ?? r['type'] ?? r['from'];
+          if (alt != null) sender = alt.toString();
+        }
+        if (senderId.isEmpty) {
+          final altId = r['sender_id'] ?? r['senderId'] ?? r['user_id'] ?? r['userId'] ?? r['from_id'];
+          if (altId != null) senderId = altId.toString();
+        }
 
         // Determine isMe using the following precedence:
         // 1) explicit role string 'user' -> true, 'bot' -> false

@@ -51,12 +51,16 @@ class MessagesModel {
 
     
 
+    // Try multiple aliases for sender/role and sender id
+    final senderVal = (data['sender'] ?? data['role'] ?? data['type'])?.toString();
+    final senderIdVal = (data['sender_id'] ?? data['senderId'] ?? data['user_id'] ?? data['userId'] ?? data['from_id'])?.toString();
+
     return MessagesModel(
       id: (data['id'] ?? '').toString(),
       content: (data['content'] ?? data['message'] ?? '').toString(),
       createdAt: created,
-      sender: data['sender']?.toString(),
-      senderId: (data['sender_id'] ?? data['senderId'] ?? data['user_id'] ?? data['userId'])?.toString(),
+      sender: senderVal,
+      senderId: senderIdVal,
       externalId: (data['external_id'] ?? data['externalId'])?.toString(),
       sessionId: (data['session_id'] ?? data['sessionId'])?.toString(),
       n8nMessage: (data['n8n_message'] ?? data['n8nMessage'])?.toString(),

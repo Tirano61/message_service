@@ -7,7 +7,7 @@ abstract class MessageRemoteDataSource {
   Future<List<MessageEntity>> getMessages({required String token, required String conversationId});
   Future<Map<String, MessageEntity>> sendMessage({
     required String conversationId,
-    required String sessionToken,
+    String? sessionToken,
     required String sender,
     required String content,
     String? jwtToken,
@@ -47,7 +47,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   @override
   Future<Map<String, MessageEntity>> sendMessage({
     required String conversationId,
-    required String sessionToken,
+    String? sessionToken,
     required String sender,
     required String content,
     String? jwtToken,
@@ -65,16 +65,19 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     }
     
     // Estructura de payload según tipo de usuario
+    // El servidor espera un role en `sender` ('user'|'bot'), no un id.
     final payload = <String, dynamic>{
       'conversationId': conversationId,
       'content': content,
-      'sender': 'user', // Requerido por el servidor
+      'sender': 'user', // role literal requerido por backend
     };
     
     // Solo agregar session_id para usuarios anónimos
-    if (!isAuthenticated) {
+    if (!isAuthenticated && sessionToken != null && sessionToken.isNotEmpty) {
       payload['session_id'] = sessionToken;
     }
+
+    // No incluir `sender_id` en el payload: el backend determina el user por el JWT.
     
     final response = await http.post(
       url,

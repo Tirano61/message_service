@@ -42,7 +42,9 @@ class _MessagePageState extends State<MessagePage> {
   _scrollController = ScrollController();
   WidgetsBinding.instance.addPostFrameCallback((_) {
   context.read<MessageBloc>().add(ConnectServerEvent());
-  context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
+  final authStateInit = context.read<AuthBloc>().state;
+  final currentUserIdInit = (authStateInit is AuthAuthenticatedState) ? authStateInit.user.id.toString() : null;
+  context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId, currentUserId: currentUserIdInit));
 });
     // Inicializar mensajes si vienen como parámetro
     final authState = context.read<AuthBloc>().state;
@@ -64,7 +66,9 @@ class _MessagePageState extends State<MessagePage> {
       if (convId != null && convId.isNotEmpty) {
         // pasar token si está disponible; el repositorio decidirá usar remoto o local
         final token = SessionManager().sessionToken;
-        context.read<MessageBloc>().add(LoadMessagesListEvent(conversationId: convId, token: token));
+        final authState2 = context.read<AuthBloc>().state;
+        final currentUserId2 = (authState2 is AuthAuthenticatedState) ? authState2.user.id.toString() : null;
+        context.read<MessageBloc>().add(LoadMessagesListEvent(conversationId: convId, token: token, currentUserId: currentUserId2));
       }
     }
     // Merge temporales almacenados en SessionManager
@@ -238,7 +242,8 @@ class _MessagePageState extends State<MessagePage> {
       setState(() {
         final authStateNow = context.read<AuthBloc>().state;
         final senderId = (authStateNow is AuthAuthenticatedState) ? authStateNow.user.id.toString() : 'local';
-        context.read<MessageBloc>().add(SendMessageEvent(text, senderId: senderId));
+        final token = (authStateNow is AuthAuthenticatedState) ? authStateNow.user.token : null;
+        context.read<MessageBloc>().add(SendMessageEvent(text, senderId: senderId, jwtToken: token));
         // Ensure local message timestamp is strictly greater than any existing timestamp
         DateTime maxTs = DateTime.now();
         for (final m in messages) {
@@ -285,10 +290,12 @@ class _MessagePageState extends State<MessagePage> {
         listener: (context, state) {
           // MessageLoadedState is intentionally light here; the BLoC will emit
           // MessagesListLoadedState to update the full list (confirmed messages, stop animations).
-          if (state is MessageLoadedState) {
+            if (state is MessageLoadedState) {
             // no-op: list refresh handled by MessagesListLoadedState
             // continue listening for next message
-            context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
+            final authStateL = context.read<AuthBloc>().state;
+            final currentUserIdL = (authStateL is AuthAuthenticatedState) ? authStateL.user.id.toString() : null;
+            context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId, currentUserId: currentUserIdL));
           }
           if (state is MessagesDisplayLoadedState) {
             try {
@@ -308,7 +315,9 @@ class _MessagePageState extends State<MessagePage> {
             // After a successful send, reload the full messages list so the
             // server-confirmed user message and bot response are shown.
             try {
-              context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId));
+              final authStateS = context.read<AuthBloc>().state;
+              final currentUserIdS = (authStateS is AuthAuthenticatedState) ? authStateS.user.id.toString() : null;
+              context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId, currentUserId: currentUserIdS));
             } catch (_) {}
           }
           // Generic error handling: if the state type name contains 'Error' try to show a message

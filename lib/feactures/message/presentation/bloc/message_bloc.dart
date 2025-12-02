@@ -36,7 +36,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           emit(MessagesListLoadedState(list));
           // Also emit display-ready maps so UI doesn't need heavy normalization
           final rawMaps = list.map((e) => e.toJson()).toList();
-          final display = prepareDisplayMessages(rawMaps, currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'repo');
+          final currentUserId = event.currentUserId ?? (userEntity.token.isNotEmpty ? userEntity.id : null);
+          final display = prepareDisplayMessages(rawMaps, currentUserId: currentUserId, source: 'repo');
           emit(MessagesDisplayLoadedState(display));
         } else {
           emit(MessageErrorState('No conversation ID available'));
@@ -52,7 +53,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         final list = await messageRepository.getListMessages(conversationId: event.conversationId, token: event.token);
         emit(MessagesListLoadedState(list));
         final rawMaps = list.map((e) => e.toJson()).toList();
-        final display = prepareDisplayMessages(rawMaps, currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'repo');
+        final currentUserId = event.currentUserId ?? (userEntity.token.isNotEmpty ? userEntity.id : null);
+        final display = prepareDisplayMessages(rawMaps, currentUserId: currentUserId, source: 'repo');
         emit(MessagesDisplayLoadedState(display));
       } catch (e) {
         emit(MessageErrorState(e.toString()));
@@ -69,19 +71,30 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     } else if (userEntity.id.isNotEmpty) {
       senderId = userEntity.id;
     } else {
-      // For anonymous flows, mark sender as literal 'user' so server can identify it
-      senderId = 'user';
+      senderId = 'local';
     }
         final messageEntity = MessageEntity(
           id: uuid.v4(), // Generate a unique ID for the message
           content: event.message,
-            sender: senderId, // use provided senderId or user id or session token
+            sender: 'user', // always send role 'user' for outbound HTTP
           created_at: DateTime.now().toUtc(),
+          senderId: senderId,
         );
-        
-        // Enviar mensaje y recibir respuesta con userMessage y botResponse
-        // Pasar JWT token si el usuario está autenticado
-        final jwtToken = userEntity.token.isNotEmpty ? userEntity.token : null;
+        // Verificación y log rápidos antes de enviar (no imprimir token completo)
+        final convIdNow = SessionManager().conversationId;
+        final hasSession = (SessionManager().sessionToken ?? '').isNotEmpty;
+        final jwtToken = (event is dynamic && (event.jwtToken != null && event.jwtToken!.isNotEmpty))
+          ? event.jwtToken
+          : (userEntity.token.isNotEmpty ? userEntity.token : null);
+        final hasJwt = (jwtToken ?? '').isNotEmpty;
+        try {
+          print('[DEBUG] SendMessage: convId=$convIdNow hasSession=$hasSession hasJwt=$hasJwt senderId=$senderId');
+        } catch (_) {}
+        if (convIdNow == null || convIdNow.isEmpty) {
+          emit(MessageErrorState('No conversation ID available for send'));
+          return;
+        }
+
         final result = await messageRepository.sendMessage(messageEntity, jwtToken: jwtToken);
         
         // Emitir estado con los mensajes recibidos (userMessage y botResponse)
@@ -89,6 +102,20 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           userMessage: result['userMessage'],
           botResponse: result['botResponse'],
         ));
+
+        // Also emit display-ready maps for the returned messages so UI can append them
+        try {
+          final List<Map<String, dynamic>> appended = [];
+          if (result['userMessage'] != null) {
+            appended.addAll(prepareDisplayMessages([result['userMessage']!.toJson()], currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'sent'));
+          }
+          if (result['botResponse'] != null) {
+            appended.addAll(prepareDisplayMessages([result['botResponse']!.toJson()], currentUserId: (userEntity.token.isNotEmpty ? userEntity.id : null), source: 'sent'));
+          }
+          if (appended.isNotEmpty) {
+            emit(MessagesDisplayLoadedState(appended));
+          }
+        } catch (_) {}
         
       } catch (e) {
         // Imprimir el error completo en consola para debug

@@ -36,9 +36,11 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? jwtToken}) async {
     final sessionToken = SessionManager().sessionToken;
     final conversationId = SessionManager().conversationId;
-    
-    if (sessionToken != null && sessionToken.isNotEmpty && 
-        conversationId != null && conversationId.isNotEmpty) {
+    // Allow sending if we have a conversationId and either a session token (anonymous)
+    // or a jwtToken (authenticated user). Previously the code required a sessionToken
+    // even for authenticated users which caused 'Missing session token or conversation ID'.
+    if (conversationId != null && conversationId.isNotEmpty &&
+        ((sessionToken != null && sessionToken.isNotEmpty) || (jwtToken != null && jwtToken.isNotEmpty))) {
       
       try {
         final result = await _remoteDataSource.sendMessage(
@@ -52,12 +54,37 @@ class MessageRepositoryImpl implements MessageRepository {
         // Persistir ambos mensajes localmente después del envío exitoso
         if (result['userMessage'] != null) {
           try {
-            await _localDataSource.insertMessage(conversationId, result['userMessage']!);
+            final um = result['userMessage']!;
+            final normalizedUser = MessageEntity(
+              id: um.id,
+              content: um.content,
+              sender: 'user',
+              created_at: um.created_at,
+              senderId: message.senderId ?? um.senderId,
+              externalId: um.externalId,
+              sessionId: um.sessionId,
+              n8nMessage: um.n8nMessage,
+            );
+            await _localDataSource.insertMessage(conversationId, normalizedUser);
+            // Replace the returned userMessage with the normalized one so callers see the corrected sender
+            result['userMessage'] = normalizedUser;
           } catch (_) {}
         }
         if (result['botResponse'] != null) {
           try {
-            await _localDataSource.insertMessage(conversationId, result['botResponse']!);
+            final br = result['botResponse']!;
+            final normalizedBot = MessageEntity(
+              id: br.id,
+              content: br.content,
+              sender: 'bot',
+              created_at: br.created_at,
+              senderId: br.senderId,
+              externalId: br.externalId,
+              sessionId: br.sessionId,
+              n8nMessage: br.n8nMessage,
+            );
+            await _localDataSource.insertMessage(conversationId, normalizedBot);
+            result['botResponse'] = normalizedBot;
           } catch (_) {}
         }
         

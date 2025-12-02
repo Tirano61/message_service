@@ -59,12 +59,16 @@ class MessageEntity {
       print('DBG MessageEntity.fromJson raw_created_at=${raw ?? 'null'} parsed=${timestamp.toIso8601String()} id=${json['id'] ?? ''} content=${json['content'] ?? ''}');
     } catch (_) {}
 
+    // Accept multiple aliases for sender/role and sender id
+    final senderVal = (json['sender'] ?? json['from'] ?? json['role'] ?? json['type'] ?? '') as String;
+    final senderIdVal = (json['sender_id'] ?? json['senderId'] ?? json['user_id'] ?? json['userId'] ?? json['from_id']) as String?;
+
     return MessageEntity(
-      id: json['id'] as String,
-      content: json['content'] as String,
-  sender: (json['sender'] ?? json['from'] ?? '') as String,
+      id: (json['id'] ?? '').toString(),
+      content: (json['content'] ?? '').toString(),
+  sender: senderVal,
   created_at: timestamp,
-      senderId: (json['sender_id'] ?? json['senderId']) as String?,
+      senderId: senderIdVal,
       externalId: json['external_id'] as String?,
       sessionId: json['session_id'] as String?,
       n8nMessage: json['n8n_message'] as String?,
