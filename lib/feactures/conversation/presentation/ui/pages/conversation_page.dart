@@ -189,6 +189,13 @@ class _ConversationListPageState extends State<ConversationListPage> {
     return BlocListener<ConversationBloc, ConversationState>(
       listener: (context, state) {
         if (state is ConversationCreatedState) {
+          // Store conversation id/session token in SessionManager
+          try {
+            SessionManager().conversationId = state.conversation.id;
+            if (state.conversation.sessionToken != null && state.conversation.sessionToken!.isNotEmpty) {
+              SessionManager().sessionToken = state.conversation.sessionToken;
+            }
+          } catch (_) {}
           // Navegar automáticamente a MessagePage cuando se crea una conversación
           Navigator.push(
             context,
@@ -249,11 +256,22 @@ class _ConversationListPageState extends State<ConversationListPage> {
 
                 final pushTitle = (c.title != null && c.title!.isNotEmpty) ? c.title! : (c.createdAt != null ? formatDate(c.createdAt) : 'Chat');
 
+                try {
+                  // ignore: avoid_print
+                  print('[DEBUG] ConversationListItem id=${c.id} title=${c.title}');
+                } catch (_) {}
                 return ListTile(
                   title: Text((c.title != null && c.title!.isNotEmpty) ? c.title! : 'Sin Titulo'),
                   subtitle: Text(subtitle),
                   onTap: () {
                     try {
+                      // debug print on tap
+                      try { print('[DEBUG] Opening conversation id=${c.id}'); } catch (_) {}
+                      // Ensure SessionManager has conversation id and session token
+                      try {
+                        SessionManager().conversationId = c.id;
+                        if (c.sessionToken != null && c.sessionToken!.isNotEmpty) SessionManager().sessionToken = c.sessionToken;
+                      } catch (_) {}
                       Navigator.push(
                         ctx,
                         MaterialPageRoute(

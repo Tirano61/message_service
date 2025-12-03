@@ -81,7 +81,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           senderId: senderId,
         );
         // Verificación y log rápidos antes de enviar (no imprimir token completo)
-        final convIdNow = SessionManager().conversationId;
+        final convIdNow = event.conversationId ?? SessionManager().conversationId;
         final hasSession = (SessionManager().sessionToken ?? '').isNotEmpty;
         final jwtToken = (event is dynamic && (event.jwtToken != null && event.jwtToken!.isNotEmpty))
           ? event.jwtToken
@@ -95,7 +95,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           return;
         }
 
-        final result = await messageRepository.sendMessage(messageEntity, jwtToken: jwtToken);
+        final result = await messageRepository.sendMessage(messageEntity, conversationId: convIdNow, jwtToken: jwtToken);
         
         // Emitir estado con los mensajes recibidos (userMessage y botResponse)
         emit(MessageSentState(
