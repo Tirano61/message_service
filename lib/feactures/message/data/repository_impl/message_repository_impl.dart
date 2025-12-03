@@ -33,22 +33,20 @@ class MessageRepositoryImpl implements MessageRepository {
   }
   
   @override
-  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? jwtToken}) async {
+  Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? conversationId, String? jwtToken}) async {
     final sessionToken = SessionManager().sessionToken;
-    final conversationId = SessionManager().conversationId;
+    final convId = conversationId ?? SessionManager().conversationId;
     // Allow sending if we have a conversationId and either a session token (anonymous)
-    // or a jwtToken (authenticated user). Previously the code required a sessionToken
-    // even for authenticated users which caused 'Missing session token or conversation ID'.
-    if (conversationId != null && conversationId.isNotEmpty &&
+    // or a jwtToken (authenticated user).
+    if (convId != null && convId.isNotEmpty &&
         ((sessionToken != null && sessionToken.isNotEmpty) || (jwtToken != null && jwtToken.isNotEmpty))) {
-      
       try {
         final result = await _remoteDataSource.sendMessage(
-          conversationId: conversationId,
+          conversationId: convId,
           sessionToken: sessionToken,
           sender: message.sender,
           content: message.content,
-          jwtToken: jwtToken, // Pasar el JWT token del usuario autenticado
+          jwtToken: jwtToken,
         );
         
         // Persistir ambos mensajes localmente después del envío exitoso
@@ -65,7 +63,7 @@ class MessageRepositoryImpl implements MessageRepository {
               sessionId: um.sessionId,
               n8nMessage: um.n8nMessage,
             );
-            await _localDataSource.insertMessage(conversationId, normalizedUser);
+            await _localDataSource.insertMessage(convId, normalizedUser);
             // Replace the returned userMessage with the normalized one so callers see the corrected sender
             result['userMessage'] = normalizedUser;
           } catch (_) {}
@@ -83,7 +81,7 @@ class MessageRepositoryImpl implements MessageRepository {
               sessionId: br.sessionId,
               n8nMessage: br.n8nMessage,
             );
-            await _localDataSource.insertMessage(conversationId, normalizedBot);
+            await _localDataSource.insertMessage(convId, normalizedBot);
             result['botResponse'] = normalizedBot;
           } catch (_) {}
         }
@@ -94,7 +92,6 @@ class MessageRepositoryImpl implements MessageRepository {
         throw Exception('Failed to send message via HTTP: $e');
       }
     }
-    
     throw Exception('Missing session token or conversation ID');
   }
   

@@ -9,8 +9,8 @@ class SendMessageUseCase {
   final MessageRepository messageRepository;
   SendMessageUseCase({required this.messageRepository});
 
-  sendMessage(MessageEntity message) {
-    return messageRepository.sendMessage(message);
+  sendMessage(String conversationId, MessageEntity message) {
+    return messageRepository.sendMessage(message, conversationId: conversationId);
   }
 
 }

@@ -243,7 +243,7 @@ class _MessagePageState extends State<MessagePage> {
         final authStateNow = context.read<AuthBloc>().state;
         final senderId = (authStateNow is AuthAuthenticatedState) ? authStateNow.user.id.toString() : 'local';
         final token = (authStateNow is AuthAuthenticatedState) ? authStateNow.user.token : null;
-        context.read<MessageBloc>().add(SendMessageEvent(text, senderId: senderId, jwtToken: token));
+        context.read<MessageBloc>().add(SendMessageEvent(text, senderId: senderId, jwtToken: token, conversationId: widget.conversationId.isNotEmpty ? widget.conversationId : null));
         // Ensure local message timestamp is strictly greater than any existing timestamp
         DateTime maxTs = DateTime.now();
         for (final m in messages) {

@@ -26,6 +26,7 @@ class SendMessageEvent extends MessageEvent {
   final String message;
   final String? senderId; // optional sender id provided by UI (auth user id or 'local')
   final String? jwtToken;
+  final String? conversationId;
 
-  SendMessageEvent(this.message, {this.senderId, this.jwtToken});
+  SendMessageEvent(this.message, {this.senderId, this.jwtToken, this.conversationId});
 }
