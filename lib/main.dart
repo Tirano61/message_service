@@ -60,19 +60,68 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Message Service',
+        title: 'Balanzas Electrónicas - Atención',
         theme: ThemeData(
-          
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 132, 0, 255)),
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF1565C0), // Azul corporativo
+            primary: const Color(0xFF1565C0),
+            secondary: const Color(0xFF2E7D32), // Verde para ventas
+            surface: Colors.white,
+            background: const Color(0xFFF5F5F5),
+          ),
+          appBarTheme: const AppBarTheme(
+            centerTitle: false,
+            elevation: 0,
+            backgroundColor: Color(0xFF1565C0),
+            foregroundColor: Colors.white,
+            titleTextStyle: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 76, 0, 255),
+              backgroundColor: const Color(0xFF1565C0),
               foregroundColor: Colors.white,
-              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14.0),
+                borderRadius: BorderRadius.circular(12.0),
               ),
+              elevation: 2,
             ),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF1565C0),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: Color(0xFF1565C0),
+            foregroundColor: Colors.white,
+            elevation: 4,
+          ),
+          cardTheme: CardTheme(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF1565C0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+            ),
+            labelStyle: const TextStyle(color: Color(0xFF1565C0)),
+            floatingLabelStyle: const TextStyle(color: Color(0xFF1565C0)),
           ),
         ),
         home: Login(),

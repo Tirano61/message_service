@@ -29,9 +29,16 @@ class ConversationRepositoryImpl implements ConversationRepository {
   }
 
   @override
-  Future<void> deleteConversation(String conversationId) {
-    // TODO: implementar usando remoteDataSource cuando el endpoint esté disponible
-    throw UnimplementedError();
+  Future<void> deleteConversation(String conversationId, {String? token, String? sessionToken}) async {
+    // Eliminar remotamente primero
+    await remoteDataSource.deleteConversation(
+      token: token ?? '',
+      conversationId: conversationId,
+      sessionToken: sessionToken,
+    );
+    
+    // Si el servidor eliminó exitosamente, eliminar localmente
+    await localDataSource.deleteConversation(conversationId);
   }
 
   // getConversation implementado más abajo por la interfaz

@@ -1,8 +1,9 @@
 
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:message_service/core/config.dart';
 import 'package:message_service/feactures/auth/data/models/user_model.dart';
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
-import 'package:http/http.dart' as http;
 
 abstract class UserLoginDataSource {
   Future<void> createUser(String userId, String name, String email);
@@ -33,18 +34,29 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
 
   @override
   Future<UserEntity> login(String email, String password) async {
-    final url = Uri.parse('http://10.0.2.2:3000/auth/login');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      return UserModel.fromJson(data);
-    } else {
-      throw Exception('Failed to login: ${response.statusCode}');
+    try {
+      final url = Uri.parse('${AppConfig.baseUrl}/auth/login');
+      print('[DEBUG] Login URL: $url');
+      print('[DEBUG] Login email: $email');
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      
+      print('[DEBUG] Login response status: ${response.statusCode}');
+      print('[DEBUG] Login response body: ${response.body}');
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserModel.fromJson(data);
+      } else {
+        throw Exception('Failed to login: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('[ERROR] Login failed: $e');
+      rethrow;
     }
   }
 
