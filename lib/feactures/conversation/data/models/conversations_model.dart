@@ -17,11 +17,11 @@ class ConversationsModel {
     required this.id,
     required this.title,
     this.type,
-  required this.messages,
-  required this.userId,
-  this.sessionToken,
-  this.createdAt,
-  this.updatedAt,
+    required this.messages,
+    required this.userId,
+    this.sessionToken,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory ConversationsModel.fromJson(dynamic json) {

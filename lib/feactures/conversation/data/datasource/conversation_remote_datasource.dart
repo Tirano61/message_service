@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:message_service/core/config.dart';
 import 'package:message_service/feactures/conversation/data/models/conversations_model.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 
@@ -24,7 +25,7 @@ abstract class ConversationRemoteDataSource {
 
 class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
   ConversationRemoteDataSourceImpl({String? baseUrl})
-      : _baseUrl = baseUrl ?? 'http://10.0.2.2:3000'; // Usa http://localhost:3000 si corres en escritorio
+      : _baseUrl = baseUrl ?? AppConfig.baseUrl;
 
   final String _baseUrl;
 

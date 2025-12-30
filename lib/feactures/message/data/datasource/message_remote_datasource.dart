@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:message_service/core/config.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
 
 abstract class MessageRemoteDataSource {
@@ -15,7 +16,7 @@ abstract class MessageRemoteDataSource {
 }
 
 class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
-  MessageRemoteDataSourceImpl({String? baseUrl}) : _baseUrl = baseUrl ?? 'http://10.0.2.2:3000';
+  MessageRemoteDataSourceImpl({String? baseUrl}) : _baseUrl = baseUrl ?? AppConfig.baseUrl;
 
   final String _baseUrl;
 

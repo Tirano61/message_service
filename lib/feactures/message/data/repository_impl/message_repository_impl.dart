@@ -36,6 +36,13 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<Map<String, MessageEntity>> sendMessage(MessageEntity message, {String? conversationId, String? jwtToken}) async {
     final sessionToken = SessionManager().sessionToken;
     final convId = conversationId ?? SessionManager().conversationId;
+    // Debug logging to trace values
+    print('[DEBUG] MessageRepositoryImpl.sendMessage:');
+    print('  - conversationId param: $conversationId');
+    print('  - SessionManager.conversationId: ${SessionManager().conversationId}');
+    print('  - resolved convId: $convId');
+    print('  - sessionToken from SessionManager: $sessionToken');
+    print('  - jwtToken provided: ${jwtToken != null && jwtToken.isNotEmpty}');
     // Allow sending if we have a conversationId and either a session token (anonymous)
     // or a jwtToken (authenticated user).
     if (convId != null && convId.isNotEmpty &&
@@ -92,6 +99,7 @@ class MessageRepositoryImpl implements MessageRepository {
         throw Exception('Failed to send message via HTTP: $e');
       }
     }
+    print('[DEBUG] FAILED validation - convId: $convId, sessionToken: $sessionToken, jwtToken: $jwtToken');
     throw Exception('Missing session token or conversation ID');
   }
   

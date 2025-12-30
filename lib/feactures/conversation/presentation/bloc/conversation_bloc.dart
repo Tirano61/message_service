@@ -35,8 +35,12 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
       } catch (_) {}
       // Intentar borrar en servidor; si falla, reportar el error pero no hacer rollback local
       try {
-  // repository.deleteConversation should remove remotely and we also remove local state above
-  await conversationRepository.deleteConversation(id);
+        // repository.deleteConversation should remove remotely and we also remove local state above
+        await conversationRepository.deleteConversation(
+          id,
+          token: e.token,
+          sessionToken: e.sessionToken,
+        );
       } catch (err) {
         emit(ConversationErrorState(message: 'Error al eliminar en servidor: ${err.toString()}'));
       }
