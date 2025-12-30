@@ -35,11 +35,12 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
   @override
   Future<UserEntity> login(String email, String password) async {
     try {
+      final client = AppConfig.getHttpClient();
       final url = Uri.parse('${AppConfig.baseUrl}/auth/login');
       print('[DEBUG] Login URL: $url');
       print('[DEBUG] Login email: $email');
       
-      final response = await http.post(
+      final response = await client.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
@@ -47,6 +48,8 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
       
       print('[DEBUG] Login response status: ${response.statusCode}');
       print('[DEBUG] Login response body: ${response.body}');
+      
+      client.close();
       
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);

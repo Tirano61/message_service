@@ -28,6 +28,8 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       : _baseUrl = baseUrl ?? AppConfig.baseUrl;
 
   final String _baseUrl;
+  
+  http.Client _getClient() => AppConfig.getHttpClient();
 
   @override
   Future<ConversationEntity> createConversation({
@@ -69,11 +71,13 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
       'type': isAnonymous ? "general" : (type ?? "general"),
     };
 
-    final response = await http.post(
+    final client = _getClient();
+    final response = await client.post(
       url,
       headers: headers,
       body: jsonEncode(payload),
     );
+    client.close();
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body);
@@ -105,10 +109,12 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     if (token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-    final response = await http.get(
+    final client = _getClient();
+    final response = await client.get(
       url,
       headers: headers,
     );
+    client.close();
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -133,10 +139,12 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     if (token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-    final response = await http.get(
+    final client = _getClient();
+    final response = await client.get(
       url,
       headers: headers,
     );
+    client.close();
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -164,7 +172,9 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     };
     if (token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
 
-    final response = await http.delete(url, headers: headers);
+    final client = _getClient();
+    final response = await client.delete(url, headers: headers);
+    client.close();
     if (response.statusCode == 200 || response.statusCode == 204) {
       return;
     } else {

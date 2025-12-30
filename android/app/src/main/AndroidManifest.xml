@@ -1,8 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- ⚠️ PRODUCCIÓN: Cambiar usesCleartextTraffic a "false" antes de publicar -->
+    <!-- TODO: Solo debe ser "true" en desarrollo con Dev Tunnels o servidores locales -->
     <application
         android:label="message_service"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

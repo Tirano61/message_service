@@ -19,13 +19,17 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   MessageRemoteDataSourceImpl({String? baseUrl}) : _baseUrl = baseUrl ?? AppConfig.baseUrl;
 
   final String _baseUrl;
+  
+  http.Client _getClient() => AppConfig.getHttpClient();
 
   @override
   Future<List<MessageEntity>> getMessages({required String token, required String conversationId}) async {
     final url = Uri.parse('$_baseUrl/conversation/$conversationId/message');
     final headers = {'Content-Type': 'application/json'};
     if (token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
-    final response = await http.get(url, headers: headers);
+    final client = _getClient();
+    final response = await client.get(url, headers: headers);
+    client.close();
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data is List) {
@@ -80,11 +84,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
     // No incluir `sender_id` en el payload: el backend determina el user por el JWT.
     
-    final response = await http.post(
+    final client = _getClient();
+    final response = await client.post(
       url,
       headers: headers,
       body: jsonEncode(payload),
     );
+    client.close();
     
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body);
