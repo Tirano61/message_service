@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/core/session_manager.dart';
 // local datasource is now accessed via the MessageBloc/repository
 import 'package:message_service/feactures/message/data/utils/message_display_mapper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MessagePage extends StatefulWidget {
   final String conversationId;
@@ -261,6 +263,74 @@ class _MessagePageState extends State<MessagePage> {
     }
   }
 
+  // Método para construir texto con enlaces clickeables
+  Widget _buildMessageText(String text, Color textColor) {
+    final urlPattern = RegExp(
+      r'(https?://[^\s]+)',
+      caseSensitive: false,
+    );
+
+    final matches = urlPattern.allMatches(text);
+    
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: TextStyle(fontSize: 16, color: textColor),
+      );
+    }
+
+    final spans = <TextSpan>[];
+    int currentPosition = 0;
+
+    for (final match in matches) {
+      // Agregar texto antes del enlace
+      if (match.start > currentPosition) {
+        spans.add(TextSpan(
+          text: text.substring(currentPosition, match.start),
+          style: TextStyle(fontSize: 16, color: textColor),
+        ));
+      }
+
+      // Agregar el enlace
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.blue,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('No se pudo abrir el enlace: $url')),
+                );
+              }
+            }
+          },
+      ));
+
+      currentPosition = match.end;
+    }
+
+    // Agregar texto después del último enlace
+    if (currentPosition < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(currentPosition),
+        style: TextStyle(fontSize: 16, color: textColor),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
+  }
+
   // _debugDump removed: kept out of production code. Re-add if needed for debugging.
 
   @override
@@ -364,9 +434,9 @@ class _MessagePageState extends State<MessagePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        _buildMessageText(
                           message['text'] as String,
-                          style: TextStyle(fontSize: 16, color: isMe ? Colors.black : Colors.black87),
+                          isMe ? Colors.black : Colors.black87,
                         ),
                         const SizedBox(height: 4),
                         Text(
