@@ -10,7 +10,8 @@ class AppConfig {
   // - Localhost (escritorio): 'http://localhost:3000'
   // - Dispositivo físico en red local: 'http://TU_IP:3000' (ej: 'http://192.168.1.100:3000')
   // - Dev Tunnels / Producción: 'https://3ztt6mfl-3000.brs.devtunnels.ms'
-  static const String baseUrl = 'https://3ztt6mfl-3000.brs.devtunnels.ms';
+  // - Production con dominio real: 'https://24.144.109.91:3000'
+  static const String baseUrl = 'http://24.144.109.91:3000';
   
   // Cliente HTTP que acepta certificados no confiables (solo para desarrollo)
   // ⚠️ PRODUCCIÓN: Eliminar badCertificateCallback y usar certificado SSL válido
