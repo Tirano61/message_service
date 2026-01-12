@@ -6,7 +6,7 @@ import 'package:message_service/feactures/auth/data/repositories/user_reository_
 import 'package:message_service/feactures/auth/domain/entities/user.dart';
 import 'package:message_service/feactures/auth/domain/use_cases/login_use_case.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
-import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
+import 'package:message_service/feactures/auth/presentation/ui/pages/splash_screen.dart';
 import 'package:message_service/feactures/conversation/data/datasource/conversation_remote_datasource.dart';
 import 'package:message_service/feactures/conversation/presentation/bloc/conversation_bloc.dart';
 import 'package:message_service/feactures/conversation/data/repository_impl/conversation_repository_impl.dart';
@@ -124,7 +124,7 @@ class MyApp extends StatelessWidget {
             floatingLabelStyle: const TextStyle(color: Color(0xFF1565C0)),
           ),
         ),
-        home: Login(),
+        home: const SplashScreen(),
       ),
     );
   }
