@@ -28,11 +28,29 @@ class Login extends StatelessWidget {
             if (state is AuthLoadingState) {
               return const Center(child: CircularProgressIndicator());
             }
+            final screenHeight = MediaQuery.of(context).size.height;
+            final screenWidth = MediaQuery.of(context).size.width;
             return Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Text(
+                    'AI Tech Support',
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.06,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.03),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: screenHeight * 0.15,
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(height: screenHeight * 0.05),
                   TextField(
                     controller: _emailController,
                     decoration: const InputDecoration(
