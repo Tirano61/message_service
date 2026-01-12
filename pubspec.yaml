@@ -28,6 +28,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   mockito: ^5.4.6  
+  flutter_launcher_icons: ^0.14.1
 
   flutter_lints: ^5.0.0
 
@@ -38,6 +39,14 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#1A237E"
+  adaptive_icon_foreground: "assets/images/logo.png"
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -5,7 +5,7 @@
     <!-- ⚠️ PRODUCCIÓN: Cambiar usesCleartextTraffic a "false" antes de publicar -->
     <!-- TODO: Solo debe ser "true" en desarrollo con Dev Tunnels o servidores locales -->
     <application
-        android:label="message_service"
+        android:label="Hook AI Support"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
