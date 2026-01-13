@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
+import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
+import 'package:message_service/core/session_manager.dart';
+import 'package:message_service/feactures/conversation/presentation/ui/pages/conversation_page.dart';
+import 'package:message_service/feactures/auth/domain/entities/user.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,17 +20,16 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _logoFadeAnimation;
   late Animation<double> _textFadeAnimation;
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2500),
       vsync: this,
     );
-
-    // Logo scale animation (0.5s - 1.2s)
+    // Inicializar animaciones ANTES de cualquier await
     _logoScaleAnimation = Tween<double>(
       begin: 0.5,
       end: 1.0,
@@ -34,8 +39,6 @@ class _SplashScreenState extends State<SplashScreen>
         curve: const Interval(0.2, 0.5, curve: Curves.easeOutBack),
       ),
     );
-
-    // Logo fade animation (0s - 0.8s)
     _logoFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -45,8 +48,6 @@ class _SplashScreenState extends State<SplashScreen>
         curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
       ),
     );
-
-    // Text fade animation (0.6s - 1.4s)
     _textFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -56,25 +57,52 @@ class _SplashScreenState extends State<SplashScreen>
         curve: const Interval(0.4, 0.7, curve: Curves.easeIn),
       ),
     );
-
-    _controller.forward();
-
-    // Navigate to login after animation completes
-    Future.delayed(const Duration(milliseconds: 3200), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => Login(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
+    // Cargar sesión persistente antes de animar
+    SessionManager().loadSession().then((_) {
+      setState(() { _ready = true; });
+      _controller.forward();
+      // Cambia aquí: validación de token
+      Future.delayed(const Duration(milliseconds: 3200), () async {
+        if (!mounted) return;
+        final token = SessionManager().sessionToken;
+        if (token != null && token.isNotEmpty) {
+          final user = await UserLoginDataSourceImpl().validateToken(token);
+          if (user != null && mounted) {
+            // Rehidratar AuthBloc
+            if (context.mounted) {
+              context.read<AuthBloc>().emit(AuthAuthenticatedState(user: user));
+              Navigator.of(context).pushReplacement(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const ConversationPage(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 500),
+                ),
               );
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
-      }
+            }
+            return;
+          }
+        }
+        // Si no hay token o no es válido, ir a login
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => Login(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 500),
+            ),
+          );
+        }
+      });
     });
   }
 
@@ -86,6 +114,12 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 

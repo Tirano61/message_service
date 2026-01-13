@@ -37,5 +37,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // HTTP-only: No socket connection needed
       emit(AuthGuestAuthenticatedState(sessionToken: event.sessionToken, conversationId: event.conversationId));
     });
+    on<AuthAutoLoginEvent>((event, emit) async {
+      // Rehidrata el estado autenticado con el usuario recuperado
+      emit(AuthAuthenticatedState(user: event.user));
+    });
   }
 }
