@@ -8,6 +8,7 @@ import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/message/data/utils/message_display_mapper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class MessagePage extends StatefulWidget {
   final String conversationId;
@@ -265,69 +266,60 @@ class _MessagePageState extends State<MessagePage> {
 
   // Método para construir texto con enlaces clickeables
   Widget _buildMessageText(String text, Color textColor) {
-    final urlPattern = RegExp(
-      r'(https?://[^\s]+)',
-      caseSensitive: false,
-    );
+    // Si el texto contiene elementos markdown (encabezados, listas, énfasis)
+    // o enlaces, renderizamos con MarkdownBody seleccionable.
+    final markdownIndicators = RegExp(r'(\*\*|__|\* |\-|\n#{1,6} |\[.*\]\(.*\)|https?://)', caseSensitive: false);
+    final isMarkdownLike = markdownIndicators.hasMatch(text);
 
-    final matches = urlPattern.allMatches(text);
-    
-    if (matches.isEmpty) {
-      return Text(
-        text,
-        style: TextStyle(fontSize: 16, color: textColor),
-      );
-    }
-
-    final spans = <TextSpan>[];
-    int currentPosition = 0;
-
-    for (final match in matches) {
-      // Agregar texto antes del enlace
-      if (match.start > currentPosition) {
-        spans.add(TextSpan(
-          text: text.substring(currentPosition, match.start),
-          style: TextStyle(fontSize: 16, color: textColor),
-        ));
-      }
-
-      // Agregar el enlace
-      final url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: TextStyle(
-          fontSize: 16,
-          color: Colors.blue,
-          decoration: TextDecoration.underline,
+    if (isMarkdownLike) {
+      final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
+      final custom = base.copyWith(
+        p: TextStyle(fontSize: 16.5, color: textColor, height: 1.25),
+        h1: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: textColor),
+        h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
+        h3: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700, color: textColor),
+        em: TextStyle(fontStyle: FontStyle.italic, color: textColor),
+        strong: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+        a: TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
+        code: TextStyle(fontFamily: 'monospace', fontSize: 14.0, color: Colors.indigo.shade900),
+        blockquote: TextStyle(color: Colors.grey.shade800, fontStyle: FontStyle.italic),
+        codeblockDecoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
         ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () async {
+        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        blockquoteDecoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border(left: BorderSide(color: Colors.grey.shade400, width: 4)),
+        ),
+      );
+
+      return MarkdownBody(
+        data: text,
+        selectable: true,
+        styleSheet: custom,
+        onTapLink: (textLink, href, title) async {
+          final url = href ?? textLink;
+          if (url == null) return;
+          try {
             final uri = Uri.parse(url);
             if (await canLaunchUrl(uri)) {
               await launchUrl(uri, mode: LaunchMode.externalApplication);
             } else {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('No se pudo abrir el enlace: $url')),
-                );
-              }
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo abrir: $url')));
             }
-          },
-      ));
-
-      currentPosition = match.end;
+          } catch (_) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL inválida')));
+          }
+        },
+      );
     }
 
-    // Agregar texto después del último enlace
-    if (currentPosition < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(currentPosition),
-        style: TextStyle(fontSize: 16, color: textColor),
-      ));
-    }
-
-    return RichText(
-      text: TextSpan(children: spans),
+    // Fallback simple: texto seleccionable
+    return SelectableText(
+      text,
+      style: TextStyle(fontSize: 16, color: textColor),
     );
   }
 
@@ -419,8 +411,8 @@ class _MessagePageState extends State<MessagePage> {
                   final isMe = message['isMe'] as bool;
                   // Build the message bubble
                   final bubble = Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                     decoration: BoxDecoration(
                       color: isMe ? const Color(0xFFB3E5FC) : const Color.fromARGB(255, 234, 216, 244),
                       borderRadius: BorderRadius.only(
