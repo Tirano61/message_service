@@ -22,3 +22,8 @@ class GuestAuthenticatedEvent extends AuthEvent {
 
   GuestAuthenticatedEvent({required this.sessionToken, required this.conversationId});
 }
+
+class AuthAutoLoginEvent extends AuthEvent {
+  final UserEntity user;
+  AuthAutoLoginEvent({required this.user});
+}

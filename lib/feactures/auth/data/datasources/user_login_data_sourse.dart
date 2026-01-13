@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:message_service/core/config.dart';
@@ -11,6 +10,7 @@ abstract class UserLoginDataSource {
   Future<UserEntity> login( String email, String password );
   Future<bool> logOut( String user );
   Future<void> deleteUser(String userId);
+  Future<UserEntity?> validateToken(String token);
 }
 
 class UserLoginDataSourceImpl implements UserLoginDataSource {
@@ -27,9 +27,30 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
   }
 
   @override
-  Future<bool> logOut(String user) {
-    
-    throw UnimplementedError();
+  Future<bool> logOut(String token) async {
+    try {
+      final client = AppConfig.getHttpClient();
+      final url = Uri.parse('${AppConfig.baseUrl}/auth/logout');
+      print('[DEBUG] Logout URL: $url');
+      
+      final response = await client.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      print('[DEBUG] Logout response status: ${response.statusCode}');
+      print('[DEBUG] Logout response body: ${response.body}');
+      
+      client.close();
+      
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('[ERROR] Logout failed: $e');
+      return false;
+    }
   }
 
   @override
@@ -69,4 +90,31 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
     throw UnimplementedError();
   }
   
+  @override
+  Future<UserEntity?> validateToken(String token) async {
+    try {
+      final client = AppConfig.getHttpClient();
+      final url = Uri.parse('${AppConfig.baseUrl}/auth/validate');
+      print('[DEBUG] ValidateToken URL: $url');
+      final response = await client.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      print('[DEBUG] ValidateToken response status: ${response.statusCode}');
+      print('[DEBUG] ValidateToken response body: ${response.body}');
+      client.close();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserModel.fromJson(data);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('[ERROR] ValidateToken failed: $e');
+      return null;
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:message_service/feactures/conversation/presentation/bloc/convers
 import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.dart';
 import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
+import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
 
 // Página menú según rol (minimal y estable)
 class ConversationPage extends StatelessWidget {
@@ -145,6 +146,39 @@ class ConversationPage extends StatelessWidget {
                 Text('Centro de Atención'),
               ],
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Cerrar sesión',
+                onPressed: () async {
+                  // Obtener el token actual
+                  final authState = context.read<AuthBloc>().state;
+                  String? token;
+                  
+                  if (authState is AuthAuthenticatedState) {
+                    token = authState.user.token;
+                  }
+                  
+                  // Llamar al endpoint de logout si hay token
+                  if (token != null && token.isNotEmpty) {
+                    try {
+                      final dataSource = UserLoginDataSourceImpl();
+                      await dataSource.logOut(token);
+                    } catch (e) {
+                      print('[ERROR] Error al hacer logout: $e');
+                    }
+                  }
+                  // Limpiar sesión local y persistente
+                  await SessionManager().clearSession();
+                  // Navegar al login
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const Login()),
+                    );
+                  }
+                },
+              ),
+            ],
           ),
           body: Container(
             decoration: BoxDecoration(
