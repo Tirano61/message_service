@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:message_service/feactures/message/presentation/bloc/message_bloc.dart';
 import 'package:message_service/feactures/auth/presentation/bloc/auth_bloc.dart';
 import 'package:message_service/core/session_manager.dart';
@@ -23,12 +22,8 @@ class MessagePage extends StatefulWidget {
 class _MessagePageState extends State<MessagePage> {
   int _seqCounter = 0;
   bool _preserveServerOrder = false;
-  final List<Map<String, dynamic>> messages = [
-    {'text': 'Hola, ¿cómo estás?', 'isMe': false},
-    {'text': '¡Hola! Todo bien, ¿y tú?', 'isMe': true},
-    {'text': 'Muy bien, gracias.', 'isMe': false},
-    {'text': '¿En qué puedo ayudarte?', 'isMe': true},
-  ];
+  // Mensajes iniciales: empezar vacío y cargar desde el BLoC/SessionManager
+  final List<Map<String, dynamic>> messages = [];
 
   final TextEditingController _controller = TextEditingController();
   late final ScrollController _scrollController;
@@ -39,16 +34,17 @@ class _MessagePageState extends State<MessagePage> {
   _scrollController.dispose();
     super.dispose();
   }
+
   @override
   void initState() {  
     super.initState();
-  _scrollController = ScrollController();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-  context.read<MessageBloc>().add(ConnectServerEvent());
-  final authStateInit = context.read<AuthBloc>().state;
-  final currentUserIdInit = (authStateInit is AuthAuthenticatedState) ? authStateInit.user.id.toString() : null;
-  context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId, currentUserId: currentUserIdInit));
-});
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MessageBloc>().add(ConnectServerEvent());
+      final authStateInit = context.read<AuthBloc>().state;
+      final currentUserIdInit = (authStateInit is AuthAuthenticatedState) ? authStateInit.user.id.toString() : null;
+      context.read<MessageBloc>().add(LoadMessageEvent(conversationId: widget.conversationId, currentUserId: currentUserIdInit));
+    });
     // Inicializar mensajes si vienen como parámetro
     final authState = context.read<AuthBloc>().state;
     if (widget.initialMessages != null && widget.initialMessages!.isNotEmpty) {
@@ -63,7 +59,7 @@ class _MessagePageState extends State<MessagePage> {
       setState(() { _normalizeAndSortMessages(); });
       WidgetsBinding.instance.addPostFrameCallback((_) { _scrollToEnd(); });
 
-      } else {
+    } else {
       // si no vinieron mensajes como parámetro, pedir la lista al BLoC (repositorio)
       final convId = widget.conversationId.isNotEmpty ? widget.conversationId : SessionManager().conversationId;
       if (convId != null && convId.isNotEmpty) {
@@ -301,7 +297,6 @@ class _MessagePageState extends State<MessagePage> {
         styleSheet: custom,
         onTapLink: (textLink, href, title) async {
           final url = href ?? textLink;
-          if (url == null) return;
           try {
             final uri = Uri.parse(url);
             if (await canLaunchUrl(uri)) {
@@ -477,36 +472,52 @@ class _MessagePageState extends State<MessagePage> {
                 },
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  Expanded(
+          ],
+        ),
+      ),
+      bottomNavigationBar: AnimatedPadding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        child: SafeArea(
+          bottom: true,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            color: Colors.white,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 150),
                     child: TextField(
                       controller: _controller,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: const InputDecoration(
+                      // multiline behavior: expand up to 5 lines
+                      minLines: 1,
+                      maxLines: 5,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      decoration: InputDecoration(
                         hintText: 'Escribe un mensaje...',
-                        border: OutlineInputBorder(
+                        border: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(24)),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Color(0xFFF0F0F0),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        fillColor: const Color(0xFFF0F0F0),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
-                    onPressed: _sendMessage,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.blue),
+                  onPressed: _sendMessage,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
