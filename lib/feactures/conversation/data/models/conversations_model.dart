@@ -37,7 +37,7 @@ class ConversationsModel {
       // Fallback: userId directo
       extractedUserId = json['userId']?.toString() ?? '';
     }
-    // Para conversaciones general (anónimas): userId queda como cadena vacía
+    // Para conversaciones anonimo (anónimas): userId queda como cadena vacía
 
     // Normalize title: support nested structures and guard against malformed placeholder 'title'
     dynamic rawTitle = json['title'] ?? json['titulo'] ?? '';

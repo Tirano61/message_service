@@ -39,7 +39,7 @@ class ConversationPage extends StatelessWidget {
       print('[DEBUG] ConversationPage error al leer authState: $e');
     }
 
-    // Usuario no autenticado: solo tarjeta anonymous
+    // Usuario no autenticado: solo tarjeta anonimo
     if (!isAuthenticated) {
       return Scaffold(
         appBar: AppBar(
@@ -66,26 +66,26 @@ class ConversationPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.scale,
-                  size: 100,
-                  color: const Color(0xFF1565C0).withOpacity(0.7),
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: MediaQuery.of(context).size.height * 0.25,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Balanzas Electrónicas',
+                SizedBox(height: MediaQuery.of(context).size.height * 0.03),
+                Text(
+                  'Balanzas Hook',
                   style: TextStyle(
-                    fontSize: 26,
+                    fontSize: MediaQuery.of(context).size.height * 0.03,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1565C0),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                SizedBox(height: MediaQuery.of(context).size.height * 0.015),
+                Text(
                   'Sistema de Atención y Soporte',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: MediaQuery.of(context).size.height * 0.02,
                     color: Colors.black54,
                   ),
                   textAlign: TextAlign.center,
@@ -95,7 +95,7 @@ class ConversationPage extends StatelessWidget {
                   title: 'Iniciar Consulta',
                   icon: Icons.chat,
                   color: const Color(0xFF1565C0),
-                  onTap: () => _openList(context, 'general'),
+                  onTap: () => _openList(context, 'anonimo'),
                 ),
               ],
             ),
@@ -120,7 +120,7 @@ class ConversationPage extends StatelessWidget {
         ),
         BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
-            if (state is AuthAuthenticatedState) {
+            if (state is AuthInitialState) {
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
             }
           },
@@ -168,8 +168,8 @@ class ConversationPage extends StatelessWidget {
                       print('[ERROR] Error al hacer logout: $e');
                     }
                   }
-                  // Limpiar sesión local y persistente
-                  await SessionManager().clearSession();
+                  // Limpiar estado de autenticación y sesión
+                  context.read<AuthBloc>().add(AuthLogoutEvent());
                   // Navegar al login
                   if (context.mounted) {
                     Navigator.of(context).pushReplacement(
@@ -206,7 +206,7 @@ class ConversationPage extends StatelessWidget {
                     title: 'Consultas Generales',
                     icon: Icons.help_outline,
                     color: const Color(0xFF455A64),
-                    onTap: () => _openList(context, 'general'),
+                    onTap: () => _openList(context, 'anonimo'),
                   ),
                   const SizedBox(height: 12),
                   // Mostrar técnico si tiene el rol tecnico
@@ -367,12 +367,12 @@ class _ConversationListPageState extends State<ConversationListPage> {
             children: [
               Icon(_getIconByType(widget.type), size: 24),
               const SizedBox(width: 8),
-              Text('Conversaciones ${_getTypeName(widget.type)}'),
+              Text('${_getTypeName(widget.type)}'),
             ],
           ),
         actions: [
           // Si es lista anónima y no está autenticado, mostrar botón para ir al login
-          if ((widget.type == 'anonymous' || widget.type == 'anonimo') && !isAuthenticated)
+          if (widget.type == 'anonimo' && !isAuthenticated)
             TextButton(
               onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login())),
               child: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)),
@@ -646,10 +646,6 @@ class _ConversationListPageState extends State<ConversationListPage> {
         return const Color(0xFF1565C0); // Azul corporativo oscuro
       case 'sales':
         return const Color(0xFF2E7D32); // Verde profesional
-      case 'user':
-        return const Color(0xFF6A1B9A); // Morado corporativo
-      case 'general':
-      case 'anonymous':
       case 'anonimo':
         return const Color(0xFF455A64); // Gris azulado profesional
       default:
@@ -664,10 +660,6 @@ class _ConversationListPageState extends State<ConversationListPage> {
         return Icons.build_circle; // Soporte técnico de equipos
       case 'sales':
         return Icons.campaign; // Marketing y material promocional
-      case 'user':
-        return Icons.business; // Clientes corporativos
-      case 'general':
-      case 'anonymous':
       case 'anonimo':
         return Icons.help_center; // Consultas generales
       default:
@@ -682,10 +674,6 @@ class _ConversationListPageState extends State<ConversationListPage> {
         return 'Soporte Técnico';
       case 'sales':
         return 'Ventas y Marketing';
-      case 'user':
-        return 'Clientes';
-      case 'general':
-      case 'anonymous':
       case 'anonimo':
         return 'Consultas';
       default:
@@ -754,14 +742,14 @@ class _NewConversationFab extends StatelessWidget {
         final authState = context.read<AuthBloc>().state;
         if (authState is AuthAuthenticatedState) {
           final user = authState.user;
-          // Permitir 'general' (conversación anónima) siempre, validar otros roles
-          if (type != 'general' && type != 'anonimo' && !user.hasRole(type)) {
+          // Permitir 'anonimo' (conversación anónima) siempre, validar otros roles
+          if (type != 'anonimo' && !user.hasRole(type)) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No tienes permisos para crear conversaciones de tipo "$type".')));
             return;
           }
           context.read<ConversationBloc>().add(CreateConversationEvent(token: user.token, userId: user.id, title: result, type: type));
         } else {
-          if (type != 'general' && type != 'anonymous') {
+          if (type != 'anonimo') {
             final goLogin = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
@@ -776,8 +764,8 @@ class _NewConversationFab extends StatelessWidget {
             if (goLogin == true) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login()));
             return;
           }
-          // Para conversaciones anónimas, enviar title="", user="", type="general"
-          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: '', type: 'general'));
+          // Para conversaciones anónimas, enviar title="", user="", type="anonimo"
+          context.read<ConversationBloc>().add(CreateConversationEvent(token: '', userId: '', title: '', type: 'anonimo'));
         }
       },
     );

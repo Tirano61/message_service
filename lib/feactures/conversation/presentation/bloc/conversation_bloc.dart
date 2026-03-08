@@ -60,8 +60,9 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
       // Store conversation ID for navigation (always needed)
       SessionManager().conversationId = newConv.id;
       
-      // Store session token only for anonymous conversations (type 'general')
-      if (event.type == 'general' && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
+      // Store session token only for anonymous conversations (backend type 'anonimo').
+      final isAnonymousType = event.type == 'anonimo';
+      if (isAnonymousType && newConv.sessionToken != null && newConv.sessionToken!.isNotEmpty) {
         SessionManager().sessionToken = newConv.sessionToken;
       }
       // HTTP-only: No socket connection needed
