@@ -9,7 +9,7 @@ class CreateConversationEvent extends ConversationEvent {
 	final String token;
 	final String userId;
 	final String title;
-	final String? type; // optional: 'user' | 'tecnico' | 'sales' | 'anonymous'
+	final String? type; // optional: 'sales' | 'tecnico' | 'anonimo'
 
 	CreateConversationEvent({
 		required this.token,
@@ -21,7 +21,7 @@ class CreateConversationEvent extends ConversationEvent {
 
 	class LoadConversationsEvent extends ConversationEvent {
 		final String token;
-		final String? type; // 'user' | 'tecnico'
+		final String? type; // 'sales' | 'tecnico' | 'anonimo'
 
 		LoadConversationsEvent({required this.token, this.type});
 	}

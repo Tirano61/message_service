@@ -27,3 +27,5 @@ class AuthAutoLoginEvent extends AuthEvent {
   final UserEntity user;
   AuthAutoLoginEvent({required this.user});
 }
+
+class AuthLogoutEvent extends AuthEvent {}

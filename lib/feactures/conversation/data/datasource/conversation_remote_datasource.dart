@@ -14,7 +14,7 @@ abstract class ConversationRemoteDataSource {
   });
   Future<List<ConversationEntity>> getConversations({
     required String token,
-    String? type, // 'user' | 'tecnico'
+    String? type, // 'sales' | 'tecnico' | 'anonimo'
   });
   Future<List<ConversationEntity>> getAllConversations({
     required String token,
@@ -38,16 +38,22 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     required String title,
     String? type,
   }) async {
+    const allowedTypes = {'sales', 'tecnico', 'anonimo'};
+    final normalizedType = (type ?? 'anonimo').toLowerCase();
+    if (!allowedTypes.contains(normalizedType)) {
+      throw Exception('Invalid conversation type "$normalizedType". Allowed: sales, tecnico, anonimo');
+    }
+
     // Choose exact backend endpoints for role-specific creation
     String path;
-    if (type != null && type.isNotEmpty) {
-      final t = type.toLowerCase();
-      if ( t == 'tecnico' ) {
+    if (normalizedType.isNotEmpty) {
+      final t = normalizedType;
+      if (t == 'tecnico') {
         path = '$_baseUrl/conversation/create-tecnico';
-      } else if ( t == 'sales' ) {
+      } else if (t == 'sales') {
         path = '$_baseUrl/conversation/create-sales';
       } else {
-        // unknown type: fallback to default create
+        // anonimo and any non role-specific type use default create endpoint
         path = '$_baseUrl/conversation/create';
       }
     } else {
@@ -60,15 +66,13 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     if (token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
-    // Consider a conversation anonymous only when type indicates 'general' *and* no auth token provided.
-    final typeLower = (type ?? '').toLowerCase();
-    final isTypeGeneral = (typeLower == 'general' || typeLower == 'anonimo' || typeLower == 'anonymous');
-    final isAnonymous = isTypeGeneral && (token.isEmpty);
+    // An anonimo conversation may be created without auth token.
+    final isAnonymous = normalizedType == 'anonimo' && token.isEmpty;
 
     final payload = <String, dynamic>{
       'title': isAnonymous ? "" : title,
       'user': isAnonymous ? "" : userId,
-      'type': isAnonymous ? "general" : (type ?? "general"),
+      'type': normalizedType,
     };
 
     final client = _getClient();
