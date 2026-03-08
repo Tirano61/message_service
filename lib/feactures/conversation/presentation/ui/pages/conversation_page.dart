@@ -21,8 +21,9 @@ class ConversationPage extends StatelessWidget {
 
     final bool isAuthenticated = userRole != null;
     final roles = (userRole ?? '').split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    final bool hasSales = roles.contains('sales');
-    final bool hasTecnico = roles.contains('tecnico');
+    final bool hasDeveloper = roles.contains('developer');
+    final bool hasSales = roles.contains('sales') || hasDeveloper;
+    final bool hasTecnico = roles.contains('tecnico') || hasDeveloper;
 
     // TODO(debug): temporal - imprimir role del usuario para depuración
     try {
@@ -229,6 +230,16 @@ class ConversationPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  // Mostrar sección developer si tiene el rol developer
+                  if (hasDeveloper) ...[
+                    _RoleCard(
+                      title: 'Soporte Developer',
+                      icon: Icons.developer_mode,
+                      color: const Color(0xFF6A1B9A),
+                      onTap: () => _openList(context, 'developer'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   // Parte que depende del ConversationBloc: usar BlocBuilder
                   Expanded(
                     child: BlocBuilder<ConversationBloc, ConversationState>(
@@ -339,6 +350,25 @@ class _ConversationListPageState extends State<ConversationListPage> {
               SessionManager().sessionToken = state.conversation.sessionToken;
             }
           } catch (_) {}
+
+          // Mostrar confirmación (snackbar) al crear la conversación
+          try {
+            final title = state.conversation.title ?? 'Conversación';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('"$title" creada correctamente')),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } catch (_) {}
+
           // Navegar automáticamente a MessagePage cuando se crea una conversación
           Navigator.push(
             context,
@@ -349,6 +379,15 @@ class _ConversationListPageState extends State<ConversationListPage> {
               ),
             ),
           );
+        }
+
+        if (state is ConversationErrorState) {
+          final msg = state.message.isNotEmpty ? state.message : 'Error de conexión';
+          try {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+          } catch (_) {}
         }
       },
       child: Scaffold(
@@ -644,6 +683,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
     switch (type.toLowerCase()) {
       case 'tecnico':
         return const Color(0xFF1565C0); // Azul corporativo oscuro
+      case 'developer':
+        return const Color(0xFF6A1B9A); // Morado para developer
       case 'sales':
         return const Color(0xFF2E7D32); // Verde profesional
       case 'anonimo':
@@ -658,6 +699,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
     switch (type.toLowerCase()) {
       case 'tecnico':
         return Icons.build_circle; // Soporte técnico de equipos
+      case 'developer':
+        return Icons.developer_mode; // Icono para developer
       case 'sales':
         return Icons.campaign; // Marketing y material promocional
       case 'anonimo':
@@ -672,6 +715,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
     switch (type.toLowerCase()) {
       case 'tecnico':
         return 'Soporte Técnico';
+      case 'developer':
+        return 'Developer';
       case 'sales':
         return 'Ventas y Marketing';
       case 'anonimo':

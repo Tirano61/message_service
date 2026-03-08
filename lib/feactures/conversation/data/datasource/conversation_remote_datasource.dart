@@ -38,10 +38,10 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
     required String title,
     String? type,
   }) async {
-    const allowedTypes = {'sales', 'tecnico', 'anonimo'};
+    const allowedTypes = {'sales', 'tecnico', 'anonimo', 'developer'};
     final normalizedType = (type ?? 'anonimo').toLowerCase();
     if (!allowedTypes.contains(normalizedType)) {
-      throw Exception('Invalid conversation type "$normalizedType". Allowed: sales, tecnico, anonimo');
+      throw Exception('Invalid conversation type "$normalizedType". Allowed: sales, tecnico, anonimo, developer');
     }
 
     // Choose exact backend endpoints for role-specific creation
@@ -52,6 +52,8 @@ class ConversationRemoteDataSourceImpl implements ConversationRemoteDataSource {
         path = '$_baseUrl/conversation/create-tecnico';
       } else if (t == 'sales') {
         path = '$_baseUrl/conversation/create-sales';
+      } else if (t == 'developer') {
+        path = '$_baseUrl/conversation/create-developer';
       } else {
         // anonimo and any non role-specific type use default create endpoint
         path = '$_baseUrl/conversation/create';
