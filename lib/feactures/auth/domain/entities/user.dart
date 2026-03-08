@@ -33,8 +33,11 @@ class UserEntity {
     if (current.contains('both')) return true; // valor especial aceptado
 
     // Valid roles declared by the server
-    const allowed = ['sales', 'tecnico', 'user'];
+    const allowed = ['sales', 'tecnico', 'developer', 'user'];
     if (!allowed.contains(wanted)) return false;
+
+    // Developer has access to all role-based sections.
+    if (current.contains('developer')) return true;
 
     return current.contains(wanted);
   }

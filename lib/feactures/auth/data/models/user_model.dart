@@ -15,7 +15,7 @@ class UserModel extends UserEntity{
   // Convierte un mapa a una instancia de UserModel
   factory UserModel.fromJson(json){
     // El servidor devuelve siempre `roles` como array. Extraemos y normalizamos
-    const allowed = ['sales', 'tecnico', 'user'];
+    const allowed = ['sales', 'tecnico', 'developer', 'user'];
     String roleValue = 'user';
 
     final dynamic rolesField = json != null ? json['roles'] : null;
