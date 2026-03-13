@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:message_service/feactures/conversation/data/models/conversations_model.dart';
 import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 import 'package:message_service/feactures/message/domain/entities/message_entity.dart';
+import 'package:message_service/feactures/message/data/datasource/local_message_datasource.dart';
 
 abstract class LocalConversationDataSource {
   Future<void> insertConversation(ConversationEntity conv);
@@ -14,6 +15,7 @@ abstract class LocalConversationDataSource {
 
 class LocalConversationDataSourceImpl implements LocalConversationDataSource {
   final LocalDatabase _db = LocalDatabase();
+  final LocalMessageDataSource _localMessageDataSource = LocalMessageDataSource();
 
   @override
   Future<void> insertConversation(ConversationEntity conv) async {
@@ -43,12 +45,12 @@ class LocalConversationDataSourceImpl implements LocalConversationDataSource {
     } else {
       rows = await db.query('conversations', orderBy: 'rowid DESC');
     }
-    return rows.map((r) {
+    final conversations = await Future.wait(rows.map((r) async {
       try {
         // ignore: avoid_print
         print('[DEBUG] local conversation row: $r');
       } catch (_) {}
-      // No DB modifications here; caller may uninstall/reinstall to reset DB.
+
       DateTime? created;
       DateTime? updated;
       try {
@@ -57,16 +59,27 @@ class LocalConversationDataSourceImpl implements LocalConversationDataSource {
       try {
         updated = r['updated_at'] != null ? DateTime.tryParse(r['updated_at'] as String)?.toUtc() : null;
       } catch (_) {}
+
+      final conversationId = r['id'] as String;
+      List<MessageEntity> messages = const <MessageEntity>[];
+      try {
+        messages = await _localMessageDataSource.getMessages(conversationId);
+      } catch (_) {
+        messages = const <MessageEntity>[];
+      }
+
       return ConversationEntity(
-        id: r['id'] as String,
+        id: conversationId,
         title: (r['title'] ?? '') as String?,
-        messages: <MessageEntity>[],
+        messages: messages,
         userId: (r['user_id'] ?? '') as String?,
         sessionToken: r['session_id'] as String?,
         createdAt: created,
         updatedAt: updated,
       );
-    }).toList();
+    }).toList());
+
+    return conversations;
   }
 
   @override

@@ -66,11 +66,11 @@ class _SplashScreenState extends State<SplashScreen>
         if (!mounted) return;
         final token = SessionManager().sessionToken;
         if (token != null && token.isNotEmpty) {
-          final user = await UserLoginDataSourceImpl().validateToken(token);
+          final UserEntity? user = await UserLoginDataSourceImpl().validateToken(token);
           if (user != null && mounted) {
-            // Rehidratar AuthBloc
+            // Rehidratar AuthBloc usando evento
             if (context.mounted) {
-              context.read<AuthBloc>().emit(AuthAuthenticatedState(user: user));
+              context.read<AuthBloc>().add(AuthAutoLoginEvent(user: user));
               Navigator.of(context).pushReplacement(
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) => const ConversationPage(),
@@ -124,95 +124,116 @@ class _SplashScreenState extends State<SplashScreen>
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated Logo
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _logoFadeAnimation.value,
-                  child: Transform.scale(
-                    scale: _logoScaleAnimation.value,
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1565C0).withOpacity(
-                              0.15 * _logoFadeAnimation.value,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF8FBFF), Colors.white],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _logoFadeAnimation.value,
+                    child: Transform.scale(
+                      scale: _logoScaleAnimation.value,
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06 * _logoFadeAnimation.value),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
                             ),
-                            blurRadius: 30,
-                            spreadRadius: 5,
+                          ],
+                        ),
+                        child: Container(
+                          width: screenWidth * 0.36,
+                          height: screenWidth * 0.36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF0E2440),
+                            border: Border.all(color: const Color(0xFFFF8A00), width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08 * _logoFadeAnimation.value),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        height: screenHeight * 0.2,
-                        width: screenHeight * 0.2,
-                        fit: BoxFit.contain,
+                          child: Center(
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              width: screenWidth * 0.2,
+                              height: screenWidth * 0.2,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-            
-            SizedBox(height: screenHeight * 0.06),
-            
-            // Animated Text
-            AnimatedBuilder(
-              animation: _textFadeAnimation,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _textFadeAnimation.value,
-                  child: Column(
-                    children: [
-                      Text(
-                        'AI Tech Support',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.085,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1A237E), // Azul oscuro profesional
-                          letterSpacing: 1.5,
+                  );
+                },
+              ),
+
+              SizedBox(height: screenHeight * 0.06),
+
+              AnimatedBuilder(
+                animation: _textFadeAnimation,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _textFadeAnimation.value,
+                    child: Column(
+                      children: [
+                        Text(
+                          'AI Tech Support',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.07,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0A1B3A),
+                            letterSpacing: 0.6,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: screenHeight * 0.015),
-                      Text(
-                        'Balanzas Hook',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.05,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF1565C0),
-                          letterSpacing: 3,
+                        SizedBox(height: screenHeight * 0.01),
+                        Text(
+                          'Balanzas Hook',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.045,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF1565C0),
+                            letterSpacing: 1.5,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: screenHeight * 0.04),
-                      // Loading indicator
-                      SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            const Color(0xFF1565C0).withOpacity(
-                              _textFadeAnimation.value,
+                        SizedBox(height: screenHeight * 0.04),
+                        SizedBox(
+                          width: 42,
+                          height: 42,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              const Color(0xFF1565C0).withOpacity(_textFadeAnimation.value),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
