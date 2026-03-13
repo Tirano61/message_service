@@ -6,6 +6,7 @@ import 'package:message_service/feactures/auth/presentation/ui/pages/login_page.
 import 'package:message_service/core/session_manager.dart';
 import 'package:message_service/feactures/message/presentation/ui/pages/message_page.dart';
 import 'package:message_service/feactures/auth/data/datasources/user_login_data_sourse.dart';
+import 'package:message_service/feactures/conversation/domain/entities/converstion_entity.dart';
 
 // Página menú según rol (minimal y estable)
 class ConversationPage extends StatelessWidget {
@@ -24,21 +25,15 @@ class ConversationPage extends StatelessWidget {
     final bool hasDeveloper = roles.contains('developer');
     final bool hasSales = roles.contains('sales') || hasDeveloper;
     final bool hasTecnico = roles.contains('tecnico') || hasDeveloper;
-
-    // TODO(debug): temporal - imprimir role del usuario para depuración
-    try {
-      if (isAuthenticated) {
-        // imprimir solo en modo debug para no saturar logs en release
-        // ignore: avoid_print
-        print('[DEBUG] ConversationPage auth user role: "$userRole"');
-      } else {
-        // ignore: avoid_print
-        print('[DEBUG] ConversationPage auth state: ${userRole.runtimeType}');
-      }
-    } catch (e) {
-      // ignore: avoid_print
-      print('[DEBUG] ConversationPage error al leer authState: $e');
-    }
+    final String userInitials = context.select<AuthBloc, String>((bloc) {
+      final st = bloc.state;
+      if (st is! AuthAuthenticatedState) return 'U';
+      final fullName = st.user.fullName.trim();
+      if (fullName.isEmpty) return 'U';
+      final parts = fullName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+      return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
+    });
 
     // Usuario no autenticado: solo tarjeta anonimo
     if (!isAuthenticated) {
@@ -94,6 +89,7 @@ class ConversationPage extends StatelessWidget {
                 const SizedBox(height: 48),
                 _RoleCard(
                   title: 'Iniciar Consulta',
+                  subtitle: 'Consulta rápida sin iniciar sesión',
                   icon: Icons.chat,
                   color: const Color(0xFF1565C0),
                   onTap: () => _openList(context, 'anonimo'),
@@ -129,130 +125,172 @@ class ConversationPage extends StatelessWidget {
       ],
       child: Builder(builder: (context) {
         return Scaffold(
+          backgroundColor: const Color(0xFFF7F9FD),
           appBar: AppBar(
+            backgroundColor: Colors.white,
             elevation: 0,
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1565C0), Color(0xFF1976D2)], // Azul corporativo
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+            scrolledUnderElevation: 0,
+            titleSpacing: 16,
+            title: const Text(
+              'Centro de Atención',
+              style: TextStyle(
+                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
               ),
             ),
-            title: const Row(
-              children: [
-                Icon(Icons.scale, size: 24), // Icono de balanza
-                SizedBox(width: 8),
-                Text('Centro de Atención'),
-              ],
-            ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: 'Cerrar sesión',
-                onPressed: () async {
-                  // Obtener el token actual
-                  final authState = context.read<AuthBloc>().state;
-                  String? token;
-                  
-                  if (authState is AuthAuthenticatedState) {
-                    token = authState.user.token;
-                  }
-                  
-                  // Llamar al endpoint de logout si hay token
-                  if (token != null && token.isNotEmpty) {
-                    try {
-                      final dataSource = UserLoginDataSourceImpl();
-                      await dataSource.logOut(token);
-                    } catch (e) {
-                      print('[ERROR] Error al hacer logout: $e');
-                    }
-                  }
-                  // Limpiar estado de autenticación y sesión
-                  context.read<AuthBloc>().add(AuthLogoutEvent());
-                  // Navegar al login
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const Login()),
-                    );
+              PopupMenuButton<String>(
+                tooltip: 'Opciones de cuenta',
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    _logout(context);
                   }
                 },
+                itemBuilder: (context) => const [
+                  PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18),
+                        SizedBox(width: 8),
+                        Text('Cerrar sesión'),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  margin: const EdgeInsets.only(right: 14),
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2454F2),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    userInitials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
           body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFF1565C0).withOpacity(0.03), Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Selecciona el tipo de atención',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+            color: const Color(0xFFF7F9FD),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '¿En qué podemos\nayudarte hoy?',
+                          style: TextStyle(
+                            fontSize: 34,
+                            height: 1.05,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Seleccioná el tipo de consulta',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'CANALES DISPONIBLES',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade500,
+                            letterSpacing: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _RoleCard(
+                          title: 'Consultas Generales',
+                          subtitle: 'Información y dudas del sistema',
+                          icon: Icons.info,
+                          color: const Color(0xFF2454F2),
+                          onTap: () => _openList(context, 'anonimo'),
+                        ),
+                        const SizedBox(height: 10),
+                        if (hasTecnico) ...[
+                          _RoleCard(
+                            title: 'Soporte Técnico',
+                            subtitle: 'Resolución de errores y fallas',
+                            icon: Icons.build,
+                            color: const Color(0xFF0FA48D),
+                            onTap: () => _openList(context, 'tecnico'),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        if (hasSales) ...[
+                          _RoleCard(
+                            title: 'Ventas y Marketing',
+                            subtitle: 'Catálogo, precios y propuestas',
+                            icon: Icons.trending_up,
+                            color: const Color(0xFFD97706),
+                            onTap: () => _openList(context, 'sales'),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        if (hasDeveloper) ...[
+                          _RoleCard(
+                            title: 'Soporte Developer',
+                            subtitle: 'APIs, integración y desarrollo',
+                            icon: Icons.developer_mode,
+                            color: const Color(0xFF6A1B9A),
+                            onTap: () => _openList(context, 'developer'),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _RoleCard(
-                    title: 'Consultas Generales',
-                    icon: Icons.help_outline,
-                    color: const Color(0xFF455A64),
-                    onTap: () => _openList(context, 'anonimo'),
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
                   ),
-                  const SizedBox(height: 12),
-                  // Mostrar técnico si tiene el rol tecnico
-                  if (hasTecnico) ...[
-                    _RoleCard(
-                      title: 'Soporte Técnico',
-                      icon: Icons.engineering,
-                      color: const Color(0xFF1565C0),
-                      onTap: () => _openList(context, 'tecnico'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  // Mostrar ventas si tiene el rol sales
-                  if (hasSales) ...[
-                    _RoleCard(
-                      title: 'Ventas y Marketing',
-                      icon: Icons.video_library,
-                      color: const Color(0xFF2E7D32),
-                      onTap: () => _openList(context, 'sales'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  // Mostrar sección developer si tiene el rol developer
-                  if (hasDeveloper) ...[
-                    _RoleCard(
-                      title: 'Soporte Developer',
-                      icon: Icons.developer_mode,
-                      color: const Color(0xFF6A1B9A),
-                      onTap: () => _openList(context, 'developer'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  // Parte que depende del ConversationBloc: usar BlocBuilder
-                  Expanded(
-                    child: BlocBuilder<ConversationBloc, ConversationState>(
-                      builder: (context, convState) {
-                        if (convState is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
-                        if (convState is ConversationLoadedState) return ListView(/*...*/);
-                        if (convState is ConversationErrorState) return Center(child: Text('Error: ${convState.message}'));
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0FA48D),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Asistentes con IA · Disponible 24/7',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -263,51 +301,100 @@ class ConversationPage extends StatelessWidget {
   void _openList(BuildContext context, String type) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => ConversationListPage(type: type)));
   }
+
+  Future<void> _logout(BuildContext context) async {
+    final authState = context.read<AuthBloc>().state;
+    String? token;
+
+    if (authState is AuthAuthenticatedState) {
+      token = authState.user.token;
+    }
+
+    if (token != null && token.isNotEmpty) {
+      try {
+        final dataSource = UserLoginDataSourceImpl();
+        await dataSource.logOut(token);
+      } catch (_) {}
+    }
+
+    context.read<AuthBloc>().add(AuthLogoutEvent());
+
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Login()),
+      );
+    }
+  }
 }
 
 class _RoleCard extends StatelessWidget {
   final String title;
+  final String subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _RoleCard({required this.title, required this.icon, required this.color, required this.onTap});
+  const _RoleCard({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      shadowColor: color.withOpacity(0.3),
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.1), Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: color.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.28), width: 1),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            leading: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    leading: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(icon, color: color, size: 18),
+                    ),
+                    title: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    subtitle: Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+                  ),
+                ),
+              ],
             ),
-            title: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            trailing: Icon(Icons.arrow_forward_ios, color: color, size: 18),
           ),
         ),
       ),
@@ -324,6 +411,8 @@ class ConversationListPage extends StatefulWidget {
 }
 
 class _ConversationListPageState extends State<ConversationListPage> {
+  String? _selectedConversationId;
+
   @override
   void initState() {
     super.initState();
@@ -376,6 +465,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
               builder: (_) => MessagePage(
                 conversationId: state.conversation.id,
                 title: state.conversation.title ?? 'Chat',
+                conversationType: widget.type,
               ),
             ),
           );
@@ -391,304 +481,576 @@ class _ConversationListPageState extends State<ConversationListPage> {
         }
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF3F5F9),
         appBar: AppBar(
+          backgroundColor: const Color(0xFFF3F5F9),
           elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_getColorByType(widget.type), _getColorByType(widget.type).withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Row(
-            children: [
-              Icon(_getIconByType(widget.type), size: 24),
-              const SizedBox(width: 8),
-              Text('${_getTypeName(widget.type)}'),
-            ],
-          ),
-        actions: [
-          // Si es lista anónima y no está autenticado, mostrar botón para ir al login
-          if (widget.type == 'anonimo' && !isAuthenticated)
-            TextButton(
-              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login())),
-              child: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)),
-            ),
-        ],
-      ),
-      body: BlocBuilder<ConversationBloc, ConversationState>(
-        builder: (context, state) {
-          if (state is ConversationLoadingState) return const Center(child: CircularProgressIndicator());
-          if (state is ConversationLoadedState) {
-            final convs = state.conversations;
-            if (convs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.inbox_outlined,
-                      size: 80,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Sin conversaciones activas',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Presiona + para iniciar una nueva atención',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            }
-              // Debug: imprimir títulos para verificar contenido
-              try {
-                // ignore: avoid_print
-                print('[DEBUG] ConversationListPage titles: ${convs.map((c) => c.title).toList()}');
-              } catch (_) {}
-            return ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: convs.length,
-              itemBuilder: (ctx, i) {
-                final c = convs[i];
-                String formatDate(DateTime? dt) {
-                  if (dt == null) return '';
-                  try {
-                    final local = dt.toLocal();
-                    final now = DateTime.now();
-                    final difference = now.difference(local);
-                    
-                    if (difference.inDays == 0) {
-                      final hh = local.hour.toString().padLeft(2, '0');
-                      final mm = local.minute.toString().padLeft(2, '0');
-                      return 'Hoy $hh:$mm';
-                    } else if (difference.inDays == 1) {
-                      return 'Ayer';
-                    } else if (difference.inDays < 7) {
-                      return '${difference.inDays} días';
-                    } else {
-                      final d = local.day.toString().padLeft(2, '0');
-                      final m = local.month.toString().padLeft(2, '0');
-                      return '$d/$m/${local.year}';
-                    }
-                  } catch (_) {
-                    return '';
-                  }
-                }
-
-                final subtitle = (c.createdAt != null && (c.createdAt is DateTime))
-                    ? formatDate(c.createdAt)
-                    : 'Nueva conversación';
-
-                final pushTitle = (c.title != null && c.title!.isNotEmpty) ? c.title! : (c.createdAt != null ? formatDate(c.createdAt) : 'Chat');
-
-                try {
-                  // ignore: avoid_print
-                  print('[DEBUG] ConversationListItem id=${c.id} title=${c.title}');
-                } catch (_) {}
-                return Dismissible(
-                  key: Key(c.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+          scrolledUnderElevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: 0,
+          title: Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Colors.red, Colors.redAccent],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFFEFF2F7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFD8DEE9)),
                     ),
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 24.0),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.delete_forever, color: Colors.white, size: 32),
-                        SizedBox(height: 4),
-                        Text(
-                          'Eliminar',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFF6B7280)),
                   ),
-                  confirmDismiss: (direction) async {
-                    return await showDialog<bool>(
-                      context: ctx,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-                          title: const Text(
-                            'Confirmar eliminación',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          content: Text(
-                            '¿Estás seguro de que deseas eliminar "${c.title ?? 'Sin título'}"?\n\nEsta acción no se puede deshacer.',
-                            textAlign: TextAlign.center,
-                          ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Cancelar'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Inicio',
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (widget.type == 'anonimo' && !isAuthenticated)
+              TextButton(
+                onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Login())),
+                child: const Text('Iniciar sesión', style: TextStyle(color: Color(0xFF2454F2))),
+              ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: BlocBuilder<ConversationBloc, ConversationState>(
+          builder: (context, state) {
+            if (state is ConversationLoadingState) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (state is ConversationErrorState) {
+              return Center(child: Text('Error: ${state.message}'));
+            }
+
+            if (state is! ConversationLoadedState) {
+              return const SizedBox.shrink();
+            }
+
+            final convs = state.conversations;
+            final baseColor = _getColorByType(widget.type);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _getTypeName(widget.type),
+                              style: const TextStyle(
+                                fontSize: 34,
+                                height: 1.05,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
                               ),
-                              child: const Text('Eliminar'),
                             ),
-                          ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: baseColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: baseColor.withOpacity(0.35)),
+                            ),
+                            child: Text(
+                              'Activo',
+                              style: TextStyle(
+                                color: baseColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${convs.length} conversaciones · ${_assistantNameByType(widget.type)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (convs.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox_outlined, size: 74, color: Colors.grey[350]),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Sin conversaciones activas',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Pulsa + Nueva para iniciar una atención',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 90),
+                      itemCount: convs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (ctx, i) {
+                        final c = convs[i];
+                        final bool isSelected = _selectedConversationId == c.id;
+                        final String title = (c.title != null && c.title!.trim().isNotEmpty)
+                            ? c.title!.trim()
+                            : 'Sin título';
+                        final String detail = _extractConversationPreview(c);
+                        final String timeLabel = _formatRelativeDate(c.createdAt);
+                        final String chipLabel = _buildConversationChip(c, widget.type);
+                        final String pushTitle = (c.title != null && c.title!.isNotEmpty)
+                            ? c.title!
+                            : (c.createdAt != null ? _formatRelativeDate(c.createdAt) : 'Chat');
+
+                        return Dismissible(
+                          key: Key(c.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 22),
+                            child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                          ),
+                          confirmDismiss: (direction) async {
+                            return await showDialog<bool>(
+                              context: ctx,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                                  title: const Text('Confirmar eliminación', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  content: Text(
+                                    '¿Estás seguro de que deseas eliminar "${c.title ?? 'Sin título'}"?\n\nEsta acción no se puede deshacer.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.of(context).pop(true),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                      child: const Text('Eliminar'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            final authStateNow = context.read<AuthBloc>().state;
+                            String token = '';
+                            if (authStateNow is AuthAuthenticatedState) {
+                              token = authStateNow.user.token;
+                            }
+
+                            if (_selectedConversationId == c.id) {
+                              setState(() {
+                                _selectedConversationId = null;
+                              });
+                            }
+
+                            context.read<ConversationBloc>().add(
+                                  DeleteConversationEvent(
+                                    conversationId: c.id,
+                                    token: token,
+                                    sessionToken: c.sessionToken,
+                                  ),
+                                );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Conversación "${c.title ?? 'Sin título'}" eliminada'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () {
+                                try {
+                                  setState(() {
+                                    _selectedConversationId = c.id;
+                                  });
+                                  SessionManager().conversationId = c.id;
+                                  if (c.sessionToken != null && c.sessionToken!.isNotEmpty) {
+                                    SessionManager().sessionToken = c.sessionToken;
+                                  }
+                                  Navigator.push(
+                                    ctx,
+                                    MaterialPageRoute(
+                                      builder: (_) => MessagePage(
+                                        conversationId: c.id,
+                                        title: pushTitle,
+                                        conversationType: widget.type,
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text('Error al abrir chat: ${e.toString()}')),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isSelected ? baseColor.withOpacity(0.08) : Colors.white.withOpacity(0.66),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSelected ? baseColor.withOpacity(0.48) : const Color(0xFFDCE2EC),
+                                  ),
+                                ),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    children: [
+                                      if (isSelected)
+                                        Container(
+                                          width: 3,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF2454F2),
+                                            borderRadius: const BorderRadius.only(
+                                              topLeft: Radius.circular(14),
+                                              bottomLeft: Radius.circular(14),
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                width: 38,
+                                                height: 38,
+                                                decoration: BoxDecoration(
+                                                  color: baseColor.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(color: baseColor.withOpacity(0.2)),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Icon(_getIconByType(widget.type), color: baseColor, size: 18),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            title,
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: const TextStyle(
+                                                              fontSize: 15,
+                                                              fontWeight: FontWeight.w700,
+                                                              color: Color(0xFF1F2937),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          timeLabel,
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: Colors.grey.shade500,
+                                                            fontWeight: FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      detail,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey.shade600,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFF1F5F9),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                                      ),
+                                                      child: Text(
+                                                        chipLabel,
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: Colors.grey.shade600,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         );
                       },
-                    );
-                  },
-                  onDismissed: (direction) {
-                    // Obtener token del AuthBloc si el usuario está autenticado
-                    final authState = context.read<AuthBloc>().state;
-                    String token = '';
-                    if (authState is AuthAuthenticatedState) {
-                      token = authState.user.token;
-                    }
-                    
-                    context.read<ConversationBloc>().add(
-                      DeleteConversationEvent(
-                        conversationId: c.id,
-                        token: token,
-                        sessionToken: c.sessionToken,
-                      ),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(Icons.check_circle, color: Colors.white),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text('Conversación "${c.title ?? 'Sin título'}" eliminada'),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
-                  },
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: CircleAvatar(
-                        radius: 28,
-                        backgroundColor: _getColorByType(widget.type),
-                        child: Icon(
-                          _getIconByType(widget.type),
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      title: Text(
-                        (c.title != null && c.title!.isNotEmpty) ? c.title! : 'Sin Título',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                              subtitle,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                      onTap: () {
-                        try {
-                          // debug print on tap
-                          try { print('[DEBUG] Opening conversation id=${c.id} sessionToken=${c.sessionToken} type=${c.type}'); } catch (_) {}
-                          // Ensure SessionManager has conversation id and session token
-                          try {
-                            SessionManager().conversationId = c.id;
-                            if (c.sessionToken != null && c.sessionToken!.isNotEmpty) SessionManager().sessionToken = c.sessionToken;
-                          } catch (_) {}
-                          Navigator.push(
-                            ctx,
-                            MaterialPageRoute(
-                              builder: (_) => MessagePage(conversationId: c.id, title: pushTitle),
-                            ),
-                          );
-                        } catch (e) {
-                          // Mostrar snackbar con detalle para ayudar a depurar en tiempo de ejecución
-                          try {
-                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error al abrir chat: ${e.toString()}')));
-                          } catch (_) {}
-                        }
-                      },
                     ),
                   ),
-                );
-              },
+              ],
             );
-          }
-          if (state is ConversationErrorState) return Center(child: Text('Error: ${state.message}'));
-          return const SizedBox.shrink();
-        },
-      ),
+          },
+        ),
         floatingActionButton: _NewConversationFab(type: widget.type),
       ),
     );
+  }
+
+  String _formatRelativeDate(DateTime? dt) {
+    if (dt == null) return 'sin fecha';
+    try {
+      final local = dt.toLocal();
+      final now = DateTime.now();
+      final difference = now.difference(local);
+      if (difference.inDays > 0) {
+        return 'hace ${difference.inDays} días';
+      }
+      if (difference.inHours > 0) {
+        return 'hace ${difference.inHours} h';
+      }
+      if (difference.inMinutes > 0) {
+        return 'hace ${difference.inMinutes} min';
+      }
+      return 'recién';
+    } catch (_) {
+      return 'sin fecha';
+    }
+  }
+
+  String _assistantNameByType(String type) {
+    switch (type.toLowerCase()) {
+      case 'tecnico':
+        return 'Asistente Técnico';
+      case 'developer':
+        return 'Asistente Dev';
+      case 'sales':
+        return 'Asistente Comercial';
+      case 'anonimo':
+        return 'Asistente General';
+      default:
+        return 'Asistente';
+    }
+  }
+
+  String _contextChipByType(String type) {
+    switch (type.toLowerCase()) {
+      case 'tecnico':
+        return 'TCP/IP - Puerto 5900';
+      case 'developer':
+        return 'Debug · API';
+      case 'sales':
+        return 'Propuesta comercial';
+      case 'anonimo':
+        return 'Consulta general';
+      default:
+        return 'Atención';
+    }
+  }
+
+  String _buildConversationChip(ConversationEntity conversation, String type) {
+    final firstUserMessage = _firstUserMessage(conversation);
+    final title = (conversation.title ?? '').trim();
+    final source = '$title $firstUserMessage'.trim();
+
+    if (source.isNotEmpty) {
+      final tokens = source
+          .split(RegExp(r"[^A-Za-z0-9ÁÉÍÓÚáéíóúÑñ]+"))
+          .map((w) => w.trim())
+          .where((w) => w.length >= 3)
+          .toList();
+
+      final weighted = <String, int>{};
+      for (final token in tokens) {
+        if (_isStopWord(token)) continue;
+        final key = _normalizeToken(token);
+        if (key.isEmpty) continue;
+
+        int score = weighted[key] ?? 0;
+        score += 1;
+        score += token.length >= 7 ? 1 : 0;
+        if (RegExp(r'\d').hasMatch(token)) score += 3;
+        if (_isTechnicalWord(key)) score += 3;
+        weighted[key] = score;
+      }
+
+      if (weighted.isNotEmpty) {
+        final sorted = weighted.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final selected = sorted.take(2).map((e) => _toTitle(e.key)).toList();
+        final chip = selected.join(' · ');
+        if (chip.isNotEmpty) return _trimChip(chip);
+      }
+
+      final fallbackWords = tokens.where((w) => !_isStopWord(w)).take(2).map(_toTitle).toList();
+      if (fallbackWords.isNotEmpty) {
+        return _trimChip(fallbackWords.join(' · '));
+      }
+    }
+
+    return _contextChipByType(type);
+  }
+
+  String _firstUserMessage(ConversationEntity conversation) {
+    final msgs = conversation.messages ?? const [];
+    for (final m in msgs) {
+      final sender = m.sender.toLowerCase().trim();
+      final content = m.content.trim();
+      if (content.isEmpty) continue;
+      if (sender == 'user' || sender == 'local') return content;
+    }
+    for (final m in msgs) {
+      final content = m.content.trim();
+      if (content.isNotEmpty) return content;
+    }
+    return '';
+  }
+
+  bool _isStopWord(String word) {
+    const stopWords = {
+      'de', 'la', 'el', 'los', 'las', 'del', 'que', 'con', 'para', 'por', 'una', 'uno', 'unos', 'unas',
+      'como', 'sin', 'sobre', 'entre', 'desde', 'hasta', 'muy', 'mas', 'más', 'hola', 'buenas', 'quiero',
+      'necesito', 'tengo', 'ayuda', 'favor', 'buen', 'dia', 'días', 'hoy', 'ayer'
+    };
+    return stopWords.contains(_normalizeToken(word));
+  }
+
+  bool _isTechnicalWord(String normalizedWord) {
+    const technical = {
+      'wifi', 'tcp', 'ip', 'puerto', 'impresora', 'balanza', 'ticket', 'tickets', 'sincronizacion',
+      'servidor', 'conexion', 'conectividad', 'api', 'token', 'login', 'error', 'calibracion',
+      'firmware', 'catalogo', 'precio', 'precios', 'ventas', 'marketing', 'stock', 'n8n'
+    };
+    return technical.contains(normalizedWord);
+  }
+
+  String _normalizeToken(String value) {
+    var v = value.toLowerCase().trim();
+    const replace = {
+      'á': 'a',
+      'é': 'e',
+      'í': 'i',
+      'ó': 'o',
+      'ú': 'u',
+      'ñ': 'n',
+    };
+    replace.forEach((k, val) {
+      v = v.replaceAll(k, val);
+    });
+    return v;
+  }
+
+  String _toTitle(String value) {
+    if (value.isEmpty) return value;
+    final lower = value.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
+  }
+
+  String _trimChip(String value) {
+    final clean = value.trim();
+    if (clean.length <= 24) return clean;
+    return '${clean.substring(0, 24).trimRight()}...';
+  }
+
+  String _extractConversationPreview(ConversationEntity conversation) {
+    final msgs = conversation.messages ?? const [];
+
+    if (msgs.isNotEmpty) {
+      for (final m in msgs) {
+        final sender = m.sender.toLowerCase().trim();
+        final content = m.content.trim();
+        if (content.isEmpty) continue;
+        if (sender == 'user' || sender == 'local') {
+          return _trimPreview(content);
+        }
+      }
+
+      for (final m in msgs) {
+        final content = m.content.trim();
+        if (content.isNotEmpty) {
+          return _trimPreview(content);
+        }
+      }
+    }
+
+    return 'Sin vista previa';
+  }
+
+  String _trimPreview(String text) {
+    if (text.length <= 48) return text;
+    return '${text.substring(0, 48).trimRight()}...';
   }
 
   // Helper para obtener color según tipo de conversación
   Color _getColorByType(String type) {
     switch (type.toLowerCase()) {
       case 'tecnico':
-        return const Color(0xFF1565C0); // Azul corporativo oscuro
+        return const Color(0xFF0FA48D); // Verde/teal soporte técnico
       case 'developer':
         return const Color(0xFF6A1B9A); // Morado para developer
       case 'sales':
-        return const Color(0xFF2E7D32); // Verde profesional
+        return const Color(0xFFD97706); // Naranja ventas y marketing
       case 'anonimo':
-        return const Color(0xFF455A64); // Gris azulado profesional
+        return const Color(0xFF2454F2); // Azul consultas generales
       default:
         return Colors.grey;
     }
@@ -698,13 +1060,13 @@ class _ConversationListPageState extends State<ConversationListPage> {
   IconData _getIconByType(String type) {
     switch (type.toLowerCase()) {
       case 'tecnico':
-        return Icons.build_circle; // Soporte técnico de equipos
+        return Icons.build; // Soporte técnico de equipos
       case 'developer':
         return Icons.developer_mode; // Icono para developer
       case 'sales':
-        return Icons.campaign; // Marketing y material promocional
+        return Icons.trending_up; // Marketing y material promocional
       case 'anonimo':
-        return Icons.help_center; // Consultas generales
+        return Icons.info; // Consultas generales
       default:
         return Icons.forum;
     }
@@ -736,9 +1098,16 @@ class _NewConversationFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
       tooltip: 'Nueva atención',
-      icon: const Icon(Icons.add_box),
-      label: const Text('Nueva'),
-      backgroundColor: const Color(0xFF1565C0),
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text(
+        'Nueva',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      backgroundColor: const Color(0xFF2454F2),
+      foregroundColor: Colors.white,
+      elevation: 10,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       onPressed: () async {
         final titleController = TextEditingController();
         final result = await showDialog<String>(

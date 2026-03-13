@@ -12,8 +12,15 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 class MessagePage extends StatefulWidget {
   final String conversationId;
   final String title;
+  final String conversationType;
   final List<dynamic>? initialMessages;
-  const MessagePage({super.key, this.conversationId = '', this.title = 'Messages', this.initialMessages});
+  const MessagePage({
+    super.key,
+    this.conversationId = '',
+    this.title = 'Messages',
+    this.conversationType = '',
+    this.initialMessages,
+  });
 
   @override
   State<MessagePage> createState() => _MessagePageState();
@@ -150,8 +157,7 @@ class _MessagePageState extends State<MessagePage> {
       final local = dt.toLocal();
       final h = local.hour.toString().padLeft(2, '0');
   final m = local.minute.toString().padLeft(2, '0');
-  final s = local.second.toString().padLeft(2, '0');
-  return '$h:$m:$s';
+  return '$h:$m';
     } catch (_) {
       return '';
     }
@@ -235,6 +241,34 @@ class _MessagePageState extends State<MessagePage> {
     }
   }
 
+  Color _typeColor() {
+    switch (widget.conversationType.toLowerCase()) {
+      case 'tecnico':
+        return const Color(0xFF0FA48D);
+      case 'sales':
+        return const Color(0xFFD97706);
+      case 'developer':
+        return const Color(0xFF6A1B9A);
+      case 'anonimo':
+      default:
+        return const Color(0xFF2454F2);
+    }
+  }
+
+  IconData _typeIcon() {
+    switch (widget.conversationType.toLowerCase()) {
+      case 'tecnico':
+        return Icons.build;
+      case 'sales':
+        return Icons.trending_up;
+      case 'developer':
+        return Icons.developer_mode;
+      case 'anonimo':
+      default:
+        return Icons.info;
+    }
+  }
+
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
@@ -270,14 +304,14 @@ class _MessagePageState extends State<MessagePage> {
     if (isMarkdownLike) {
       final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
       final custom = base.copyWith(
-        p: TextStyle(fontSize: 16.5, color: textColor, height: 1.25),
-        h1: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: textColor),
-        h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
-        h3: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700, color: textColor),
+        p: TextStyle(fontSize: 13.5, color: textColor, height: 1.25),
+        h1: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
+        h2: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor),
+        h3: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textColor),
         em: TextStyle(fontStyle: FontStyle.italic, color: textColor),
         strong: TextStyle(fontWeight: FontWeight.w700, color: textColor),
         a: TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
-        code: TextStyle(fontFamily: 'monospace', fontSize: 14.0, color: Colors.indigo.shade900),
+        code: TextStyle(fontFamily: 'monospace', fontSize: 13.5, color: Colors.indigo.shade900),
         blockquote: TextStyle(color: Colors.grey.shade800, fontStyle: FontStyle.italic),
         codeblockDecoration: BoxDecoration(
           color: Colors.grey.shade200,
@@ -314,7 +348,7 @@ class _MessagePageState extends State<MessagePage> {
     // Fallback simple: texto seleccionable
     return SelectableText(
       text,
-      style: TextStyle(fontSize: 16, color: textColor),
+      style: TextStyle(fontSize: 13, color: textColor),
     );
   }
 
@@ -322,24 +356,79 @@ class _MessagePageState extends State<MessagePage> {
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = _typeColor();
+    final accentIcon = _typeIcon();
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F5F9),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Volver',
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+        backgroundColor: const Color(0xFFF3F5F9),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF2F7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD8DEE9)),
+              ),
+              child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFF6B7280)),
+            ),
+          ),
         ),
-        centerTitle: true,
-        elevation: 6,
-        title: Text(widget.title),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.16),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Icon(accentIcon, color: accentColor, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '● Asistente IA activo',
+                    style: TextStyle(
+                      color: accentColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          BlocBuilder<MessageBloc, MessageState>(
-            builder: (context, state) {
-              // HTTP-only: always show disconnected (no real-time connection)
-              return const Icon(Icons.connect_without_contact, color: Colors.red);
-            },
+          IconButton(
+            icon: const Icon(Icons.more_horiz, color: Color(0xFF9CA3AF)),
+            onPressed: () {},
           ),
         ],
       ),
@@ -398,7 +487,7 @@ class _MessagePageState extends State<MessagePage> {
           children: [
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
                 controller: _scrollController,
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
@@ -407,15 +496,26 @@ class _MessagePageState extends State<MessagePage> {
                   // Build the message bubble
                   final bubble = Container(
                     margin: const EdgeInsets.symmetric(vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * (isMe ? 0.72 : 0.85),
+                    ),
                     decoration: BoxDecoration(
-                      color: isMe ? const Color(0xFFB3E5FC) : const Color.fromARGB(255, 234, 216, 244),
+                      color: isMe ? accentColor.withOpacity(0.12) : Colors.white,
                       borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
-                        bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
+                        topLeft: const Radius.circular(14),
+                        topRight: const Radius.circular(14),
+                        bottomLeft: isMe ? const Radius.circular(14) : const Radius.circular(4),
+                        bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(14),
                       ),
+                      border: isMe ? null : Border.all(color: const Color(0xFFE3E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,19 +523,27 @@ class _MessagePageState extends State<MessagePage> {
                       children: [
                         _buildMessageText(
                           message['text'] as String,
-                          isMe ? Colors.black : Colors.black87,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatTime((message['timestamp'] ?? message['created_at'] ?? '').toString()),
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          (message['source'] ?? '').toString(),
-                          style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+                          isMe ? const Color(0xFF09090A) : const Color(0xFF374151),
                         ),
                       ],
+                    ),
+                  );
+
+                  final metadata = Padding(
+                    padding: EdgeInsets.only(
+                      left: isMe ? 0 : 4,
+                      right: isMe ? 4 : 0,
+                      top: 2,
+                    ),
+                    child: Text(
+                      isMe
+                          ? _formatTime((message['timestamp'] ?? message['created_at'] ?? '').toString())
+                          : '${_formatTime((message['timestamp'] ?? message['created_at'] ?? '').toString())} · IA',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   );
 
@@ -444,9 +552,27 @@ class _MessagePageState extends State<MessagePage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
-                      Align(
-                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: bubble,
+                      Row(
+                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (!isMe)
+                            Container(
+                              width: 24,
+                              height: 24,
+                              margin: const EdgeInsets.only(right: 6, bottom: 22),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(accentIcon, color: accentColor, size: 14),
+                            ),
+                          Column(
+                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            children: [bubble, metadata],
+                          ),
+                        ],
                       ),
                       // If this is a local optimistic message sent by the user, show
                       // the bot 'thinking' indicator (three dots) on the left until
@@ -459,7 +585,7 @@ class _MessagePageState extends State<MessagePage> {
                             margin: const EdgeInsets.only(left: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 234, 216, 244),
+                              color: accentColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: const _WaitingDots(),
@@ -482,38 +608,57 @@ class _MessagePageState extends State<MessagePage> {
         child: SafeArea(
           bottom: true,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+            color: const Color(0xFFF3F5F9),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: TextField(
-                      controller: _controller,
-                      // multiline behavior: expand up to 5 lines
-                      minLines: 1,
-                      maxLines: 5,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: InputDecoration(
-                        hintText: 'Escribe un mensaje...',
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(24)),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF0F0F0),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: TextField(
+                    controller: _controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      hintText: 'Escribe un mensaje...',
+                      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD7DCE5)),
                       ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: accentColor, width: 1.2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: _sendMessage,
+                Container(
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.42),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: accentColor.withOpacity(0.72),
+                      width: 1,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _sendMessage,
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
