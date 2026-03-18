@@ -6,8 +6,7 @@ import 'package:message_service/core/session_manager.dart';
 // local datasource is now accessed via the MessageBloc/repository
 import 'package:message_service/feactures/message/data/utils/message_display_mapper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:message_service/feactures/message/presentation/ui/widgets/message_content.dart';
 
 class MessagePage extends StatefulWidget {
   final String conversationId;
@@ -295,62 +294,7 @@ class _MessagePageState extends State<MessagePage> {
   }
 
   // Método para construir texto con enlaces clickeables
-  Widget _buildMessageText(String text, Color textColor) {
-    // Si el texto contiene elementos markdown (encabezados, listas, énfasis)
-    // o enlaces, renderizamos con MarkdownBody seleccionable.
-    final markdownIndicators = RegExp(r'(\*\*|__|\* |\-|\n#{1,6} |\[.*\]\(.*\)|https?://)', caseSensitive: false);
-    final isMarkdownLike = markdownIndicators.hasMatch(text);
 
-    if (isMarkdownLike) {
-      final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
-      final custom = base.copyWith(
-        p: TextStyle(fontSize: 13.5, color: textColor, height: 1.25),
-        h1: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
-        h2: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor),
-        h3: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textColor),
-        em: TextStyle(fontStyle: FontStyle.italic, color: textColor),
-        strong: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-        a: TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
-        code: TextStyle(fontFamily: 'monospace', fontSize: 13.5, color: Colors.indigo.shade900),
-        blockquote: TextStyle(color: Colors.grey.shade800, fontStyle: FontStyle.italic),
-        codeblockDecoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        blockquoteDecoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border(left: BorderSide(color: Colors.grey.shade400, width: 4)),
-        ),
-      );
-
-      return MarkdownBody(
-        data: text,
-        selectable: true,
-        styleSheet: custom,
-        onTapLink: (textLink, href, title) async {
-          final url = href ?? textLink;
-          try {
-            final uri = Uri.parse(url);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else {
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo abrir: $url')));
-            }
-          } catch (_) {
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL inválida')));
-          }
-        },
-      );
-    }
-
-    // Fallback simple: texto seleccionable
-    return SelectableText(
-      text,
-      style: TextStyle(fontSize: 13, color: textColor),
-    );
-  }
 
   // _debugDump removed: kept out of production code. Re-add if needed for debugging.
 
@@ -521,9 +465,9 @@ class _MessagePageState extends State<MessagePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildMessageText(
+                        MessageContent(
                           message['text'] as String,
-                          isMe ? const Color(0xFF09090A) : const Color(0xFF374151),
+                          textColor: isMe ? const Color(0xFF09090A) : const Color(0xFF374151),
                         ),
                       ],
                     ),
