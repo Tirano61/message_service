@@ -83,17 +83,18 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
   Future<void> _onLoadConversations( event, emit ) async {
     emit(ConversationLoadingState());
     try {
-      List<ConversationEntity> list;
-      if (event.type != null && event.type!.isNotEmpty) {
-        // Pedir al repositorio conversaciones locales filtrando por tipo
-        list = await conversationRepository.getConversations(type: event.type);
-      } else if ((event as dynamic).userId != null) {
-        // fallback: fetch remote and sync local via repository
-        final conv = await conversationRepository.getAllConversations(event.token, (event as dynamic).userId);
-        list = [conv];
-      } else {
-        list = await conversationRepository.getConversations();
+      final e = event as LoadConversationsEvent;
+
+      // Si hay token, intentamos sincronizar con servidor para evitar stale local.
+      if (e.token.isNotEmpty) {
+        try {
+          await conversationRepository.getAllConversations(e.token, '');
+        } catch (_) {
+          // Si falla sync remoto, seguimos con local para no bloquear UI.
+        }
       }
+
+      final list = await conversationRepository.getConversations(type: e.type);
       emit(ConversationLoadedState(conversations: list));
     } catch (e) {
       emit(ConversationErrorState(message: e.toString()));

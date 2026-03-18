@@ -25,6 +25,10 @@ dependencies:
   url_launcher: ^6.3.1
   shared_preferences: ^2.5.4
   flutter_markdown: ^0.7.0
+  cached_network_image: ^3.2.3
+  photo_view: ^0.14.0
+  flutter_cached_pdfview: ^0.4.3
+  flutter_linkify: ^6.0.0
 
 dev_dependencies:
   flutter_test:

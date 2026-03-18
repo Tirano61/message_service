@@ -61,10 +61,14 @@ class UserLoginDataSourceImpl implements UserLoginDataSource {
       print('[DEBUG] Login URL: $url');
       print('[DEBUG] Login email: $email');
       
+      final body = jsonEncode({'email': email, 'password': password});
+      print('[DEBUG] Login request body: $body');
+      final headers = {'Content-Type': 'application/json'};
+      print('[DEBUG] Login request headers: $headers');
       final response = await client.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+        headers: headers,
+        body: body,
       );
       
       print('[DEBUG] Login response status: ${response.statusCode}');

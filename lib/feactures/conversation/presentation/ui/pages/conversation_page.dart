@@ -418,7 +418,14 @@ class _ConversationListPageState extends State<ConversationListPage> {
     super.initState();
     // Cargar conversaciones del tipo solicitado después del primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = SessionManager().sessionToken ?? '';
+      final authState = context.read<AuthBloc>().state;
+      String token = '';
+      if (authState is AuthAuthenticatedState) {
+        token = authState.user.token;
+      }
+      if (token.isEmpty) {
+        token = SessionManager().sessionToken ?? '';
+      }
       context.read<ConversationBloc>().add(LoadConversationsEvent(token: token, type: widget.type));
     });
   }

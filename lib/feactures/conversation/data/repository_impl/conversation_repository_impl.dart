@@ -56,19 +56,30 @@ class ConversationRepositoryImpl implements ConversationRepository {
   }
   
   @override
-  Future<ConversationEntity> getAllConversations(String token, String userId) {
-    // Consultar al servidor todas las conversaciones del usuario y sincronizar localmente
-    return remoteDataSource.getAllConversations(token: token, userId: userId).then((list) async {
-      // Guardar/actualizar localmente
-      for (var conv in list) {
+  Future<List<ConversationEntity>> getAllConversations(String token, String userId) async {
+    // Consultar al servidor todas las conversaciones del usuario y sincronizar localmente.
+    final remoteList = await remoteDataSource.getAllConversations(token: token, userId: userId);
+
+    final remoteIds = remoteList.map((c) => c.id).toSet();
+    final localList = await localDataSource.getConversations();
+
+    // Purgar conversaciones locales que ya no existen en servidor.
+    for (final local in localList) {
+      if (!remoteIds.contains(local.id)) {
         try {
-          await localDataSource.insertConversation(conv);
+          await localDataSource.deleteConversation(local.id);
         } catch (_) {}
       }
-      // Devolver la primera como placeholder (método firma discordante con uso actual)
-      if (list.isNotEmpty) return list.first;
-      throw Exception('No conversations found');
-    });
+    }
+
+    // Upsert de conversaciones remotas.
+    for (final conv in remoteList) {
+      try {
+        await localDataSource.insertConversation(conv);
+      } catch (_) {}
+    }
+
+    return localDataSource.getConversations();
   }
   
   @override
