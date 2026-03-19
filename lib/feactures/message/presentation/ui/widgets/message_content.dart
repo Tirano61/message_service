@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:flutter_cached_pdfview/flutter_cached_pdfview.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 class MessageContent extends StatelessWidget {
@@ -90,7 +91,7 @@ class MessageContent extends StatelessWidget {
         if (_isImage(cleaned) || _isPdf(cleaned)) {
           parts.add(_MessagePart.media(cleaned));
         } else {
-          parts.add(_MessagePart.text(cleaned));
+          parts.add(_MessagePart.text(match.group(0) ?? cleaned));
         }
       }
 
@@ -140,29 +141,84 @@ class MessageContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.grey.shade300),
         ),
-        child: const Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [Icon(Icons.picture_as_pdf), SizedBox(width: 8), Flexible(child: Text('Abrir PDF'))],
-          ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Preview inline: muestra el contenido del PDF dentro de la burbuja.
+            IgnorePointer(
+              child: PDF(
+                enableSwipe: false,
+                pageFling: false,
+                pageSnap: true,
+                defaultPage: 0,
+              ).cachedFromUrl(
+                url,
+                placeholder: (progress) => Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: (progress / 100).clamp(0.0, 1.0),
+                  ),
+                ),
+                errorWidget: (_) => const Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Icon(Icons.picture_as_pdf), SizedBox(width: 8), Flexible(child: Text('No se pudo previsualizar'))],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                color: Colors.black.withValues(alpha: 0.45),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text('Tocar para abrir PDF', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildLinkifiedText(BuildContext context, String value) {
-    return Linkify(
-      text: value,
-      onOpen: (link) async {
-        final cleaned = _cleanUrl(link.url);
-        final uri = Uri.tryParse(cleaned);
+    final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
+    final styleSheet = base.copyWith(
+      p: TextStyle(fontSize: 13, color: textColor ?? Colors.black, height: 1.25),
+      tableHead: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: textColor ?? Colors.black),
+      tableBody: TextStyle(fontSize: 12.5, color: textColor ?? Colors.black),
+      tableBorder: TableBorder.all(color: Colors.grey.shade300, width: 0.8),
+      a: const TextStyle(color: Colors.blueAccent, decoration: TextDecoration.underline),
+      code: TextStyle(fontFamily: 'monospace', fontSize: 12.5, color: Colors.indigo.shade900),
+      blockquote: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+      blockquoteDecoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: Colors.grey.shade400, width: 3)),
+      ),
+    );
+
+    return MarkdownBody(
+      data: value,
+      selectable: true,
+      extensionSet: md.ExtensionSet.gitHubWeb,
+      styleSheet: styleSheet,
+      onTapLink: (textLink, href, title) async {
+        final url = _cleanUrl(href ?? textLink);
+        final uri = Uri.tryParse(url);
         if (uri != null && await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
-      options: const LinkifyOptions(humanize: false),
-      style: TextStyle(fontSize: 13, color: textColor ?? Colors.black),
-      linkStyle: const TextStyle(color: Colors.blueAccent),
     );
   }
 }
